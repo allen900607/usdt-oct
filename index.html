@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>USDT OTC 記帳系統</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
 <style>
 :root{--bg:#0d1117;--surface:#161b22;--surface2:#21262d;--border:#30363d;--text:#e6edf3;--text-muted:#8b949e;--green:#3fb950;--green-bg:rgba(63,185,80,.12);--red:#f85149;--red-bg:rgba(248,81,73,.12);--blue:#58a6ff;--blue-bg:rgba(88,166,255,.12);--gold:#d29922;--gold-bg:rgba(210,153,34,.12);--purple:#bc8cff;--radius:10px;--shadow:0 4px 24px rgba(0,0,0,.5)}
 *{margin:0;padding:0;box-sizing:border-box}
@@ -105,6 +109,22 @@ select.inp{cursor:pointer}
 .no-data{display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-muted);font-size:13px}
 ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
 .mob-nav{display:none}
+
+/* 新增：登入畫面的樣式 */
+#login-screen {
+  position: fixed; inset: 0; background: var(--bg); z-index: 9999;
+  display: flex; align-items: center; justify-content: center;
+  flex-direction: column; gap: 18px;
+}
+.login-box {
+  background: var(--surface); border: 1px solid var(--border);
+  padding: 32px; border-radius: var(--radius); width: 340px;
+  display: flex; flex-direction: column; gap: 16px;
+  box-shadow: var(--shadow); text-align: center;
+}
+.login-box input { width: 100%; padding: 12px; font-size: 14px; }
+.login-box button { width: 100%; padding: 12px; font-size: 14px; justify-content: center; }
+
 @media(max-width:960px){
   .app{grid-template-columns:1fr}
   .sidebar{display:none}
@@ -131,6 +151,17 @@ select.inp{cursor:pointer}
 </style>
 </head>
 <body>
+
+<div id="login-screen">
+  <div class="login-box">
+    <div class="logo-icon" style="margin: 0 auto; width: 48px; height: 48px; font-size: 24px;">₮</div>
+    <h2 style="font-size: 18px; margin-bottom: 8px;">USDT OTC 系統</h2>
+    <input type="email" id="login-email" class="inp" placeholder="帳號 (Email)">
+    <input type="password" id="login-pw" class="inp" placeholder="密碼">
+    <button class="btn btn-blue" onclick="handleLogin()">登入系統</button>
+  </div>
+</div>
+
 <div class="app">
 <aside class="sidebar">
   <div class="logo">
@@ -151,8 +182,6 @@ select.inp{cursor:pointer}
 </aside>
 
 <main class="main">
-
-<!-- DASHBOARD -->
 <div class="page active" id="page-dash">
   <div class="ph">
     <div><div class="pt">儀表板</div><div class="ps">USDT OTC 換匯盈利總覽</div></div>
@@ -192,7 +221,6 @@ select.inp{cursor:pointer}
   </div>
 </div>
 
-<!-- TRANSACTIONS -->
 <div class="page" id="page-tx">
   <div class="ph">
     <div><div class="pt">交易記錄</div><div class="ps">完整 USDT 收付紀錄</div></div>
@@ -217,7 +245,6 @@ select.inp{cursor:pointer}
   </div>
 </div>
 
-<!-- COUNTERPARTY -->
 <div class="page" id="page-cp">
   <div class="ph"><div><div class="pt">對手方分析</div><div class="ps">統計跟誰收USDT、出給誰、各方往來金額</div></div></div>
   <div class="chart-row" style="grid-template-columns:1fr 1fr">
@@ -241,7 +268,6 @@ select.inp{cursor:pointer}
   </div>
 </div>
 
-<!-- ADDRESS -->
 <div class="page" id="page-addr">
   <div class="ph"><div><div class="pt">地址追蹤</div><div class="ps">每個錢包/帳號的全成本與往來統計</div></div></div>
   <div class="tcard">
@@ -252,7 +278,6 @@ select.inp{cursor:pointer}
   </div>
 </div>
 
-<!-- PROFIT -->
 <div class="page" id="page-profit">
   <div class="ph"><div><div class="pt">盈利分析</div><div class="ps">FIFO 成本法 — 逐筆計算每次出USDT的真實盈利</div></div></div>
   <div class="pa-summary">
@@ -273,9 +298,14 @@ select.inp{cursor:pointer}
   </div>
 </div>
 
-<!-- SETTINGS -->
 <div class="page" id="page-settings">
   <div class="ph"><div><div class="pt">設定</div><div class="ps">資料管理與系統說明</div></div></div>
+  
+  <div class="scard">
+    <div class="scard-title">帳號管理</div>
+    <div class="srow"><div><div class="slabel">登出系統</div><div class="sdesc">登出並鎖定當前資料</div></div><button class="btn btn-outline btn-sm" onclick="handleLogout()">🚪 登出</button></div>
+  </div>
+
   <div class="scard">
     <div class="scard-title">🗄 資料管理</div>
     <div class="srow"><div><div class="slabel">匯出 CSV</div><div class="sdesc">匯出全部交易記錄（含 FIFO 盈利）</div></div><button class="btn btn-outline btn-sm" onclick="exportCSV()">⬇ 匯出</button></div>
@@ -294,7 +324,6 @@ select.inp{cursor:pointer}
 
 </main>
 
-<!-- MOBILE BOTTOM NAV -->
 <nav class="mob-nav">
   <div class="mob-nav-item active" data-p="dash"><span class="nav-icon">📊</span><span>儀表板</span></div>
   <div class="mob-nav-item" data-p="tx"><span class="nav-icon">📋</span><span>記錄</span></div>
@@ -305,7 +334,6 @@ select.inp{cursor:pointer}
 
 </div>
 
-<!-- MODAL -->
 <div class="overlay" id="modal-overlay">
 <div class="modal">
   <div class="modal-hd">
@@ -355,11 +383,83 @@ select.inp{cursor:pointer}
 
 <script>
 // ═══════════════════════════════════════════
-// DATA
+// FIREBASE & DATA
 // ═══════════════════════════════════════════
-let DB=JSON.parse(localStorage.getItem('usdt-otc')||'null');
-if(!DB){DB={transactions:[]};saveDB();}
-function saveDB(){localStorage.setItem('usdt-otc',JSON.stringify(DB));}
+// 【重要】這裡必須替換成你的 Firebase 設定參數！！
+const firebaseConfig = {
+  apiKey: "AIzaSyCcySvNcAjjKB4fhuqVBdLEmG2lZvXwqag",
+  authDomain: "test7788-43edc.firebaseapp.com",
+  projectId: "test7788-43edc",
+  storageBucket: "test7788-43edc.firebasestorage.app",
+  messagingSenderId: "453505538567",
+  appId: "1:453505538567:web:f874c39fe349ea8fde68a2"
+};
+
+// 初始化 Firebase
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+let DB = { transactions: [] };
+let currentUser = null;
+
+// 監聽登入狀態
+auth.onAuthStateChanged(user => {
+  if (user) {
+    currentUser = user;
+    document.getElementById('login-screen').style.display = 'none';
+    loadDBFromCloud();
+  } else {
+    currentUser = null;
+    document.getElementById('login-screen').style.display = 'flex';
+  }
+});
+
+// 登入事件
+function handleLogin() {
+  const e = document.getElementById('login-email').value;
+  const p = document.getElementById('login-pw').value;
+  if (!e || !p) return alert('請輸入帳號密碼');
+  auth.signInWithEmailAndPassword(e, p).catch(err => {
+    alert('登入失敗，請確認帳號密碼或至後台建立帳號。錯誤：' + err.message);
+  });
+}
+
+// 登出事件
+function handleLogout() {
+  auth.signOut().then(() => {
+    DB = { transactions: [] }; // 清空本地記憶體
+    document.getElementById('login-email').value = '';
+    document.getElementById('login-pw').value = '';
+    toast('已登出系統', 'ok');
+  });
+}
+
+// 從 Firestore 讀取資料
+function loadDBFromCloud() {
+  if (!currentUser) return;
+  db.collection('users').doc(currentUser.uid).get().then(doc => {
+    if (doc.exists) {
+      DB = doc.data();
+    } else {
+      DB = { transactions: [] };
+      saveDB(); // 初始化空資料庫
+    }
+    renderActive(); // 取得資料後開始渲染畫面
+    toast('資料同步成功', 'ok');
+  }).catch(err => {
+    console.error(err);
+    toast('讀取資料失敗', 'err');
+  });
+}
+
+// 儲存資料到 Firestore (取代原有的 localStorage.setItem)
+function saveDB() {
+  if (currentUser) {
+    db.collection('users').doc(currentUser.uid).set(DB)
+      .catch(err => toast("儲存至雲端失敗", 'err'));
+  }
+}
 
 // ═══════════════════════════════════════════
 // FIFO COST BASIS
@@ -453,6 +553,7 @@ document.querySelectorAll('.nav-item,.mob-nav-item[data-p]').forEach(n=>n.addEve
 // DASHBOARD
 // ═══════════════════════════════════════════
 function renderDash(){
+  if(!DB || !DB.transactions) return; // 確保有資料再渲染
   const txs=DB.transactions;
   const buys=txs.filter(t=>t.type==='buy');
   const sells=txs.filter(t=>t.type==='sell');
@@ -808,9 +909,6 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Escape')closeModal();
   if(e.key==='n'&&!e.target.matches('input,select,textarea')&&!document.getElementById('modal-overlay').classList.contains('open'))openModal();
 });
-
-// INIT
-renderDash();
 </script>
 </body>
 </html>
