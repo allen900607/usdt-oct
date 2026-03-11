@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>USDT OTC 記帳系統</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root{--bg:#0d1117;--surface:#161b22;--surface2:#21262d;--border:#30363d;--text:#e6edf3;--text-muted:#8b949e;--green:#3fb950;--green-bg:rgba(63,185,80,.12);--red:#f85149;--red-bg:rgba(248,81,73,.12);--blue:#58a6ff;--blue-bg:rgba(88,166,255,.12);--gold:#d29922;--gold-bg:rgba(210,153,34,.12);--purple:#bc8cff;--radius:10px;--shadow:0 4px 24px rgba(0,0,0,.5)}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;min-height:100vh}
+.app{display:grid;grid-template-columns:230px 1fr;min-height:100vh}
+.sidebar{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto}
+.logo{padding:20px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border)}
+.logo-icon{width:38px;height:38px;background:linear-gradient(135deg,#58a6ff,#3fb950);border-radius:9px;display:grid;place-items:center;font-size:20px;font-weight:900;color:#fff;flex-shrink:0}
+.logo-name{font-size:15px;font-weight:700}.logo-sub{font-size:11px;color:var(--text-muted);margin-top:1px}
+.nav-sec{font-size:10px;color:var(--text-muted);padding:14px 18px 4px;text-transform:uppercase;letter-spacing:.8px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 18px;cursor:pointer;color:var(--text-muted);font-size:13px;font-weight:500;transition:all .15s;border-left:2px solid transparent}
+.nav-item:hover{background:var(--surface2);color:var(--text)}
+.nav-item.active{color:var(--blue);background:var(--blue-bg);border-left-color:var(--blue)}
+.nav-icon{font-size:16px;width:20px;text-align:center}
+.sidebar-footer{margin-top:auto;padding:16px}
+.main{padding:28px 32px;overflow-y:auto;min-width:0}
+.page{display:none}.page.active{display:block}
+.ph{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:22px;gap:12px}
+.pt{font-size:21px;font-weight:700}.ps{font-size:13px;color:var(--text-muted);margin-top:3px}
+.cards{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:22px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px}
+.card-label{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.card-val{font-size:22px;font-weight:700;letter-spacing:-.5px;line-height:1}
+.card-sub{font-size:11px;color:var(--text-muted);margin-top:6px}
+.c-blue{color:var(--blue)}.c-red{color:var(--red)}.c-green{color:var(--green)}.c-gold{color:var(--gold)}.c-purple{color:var(--purple)}
+.chart-row{display:grid;grid-template-columns:1.6fr 1fr 1fr;gap:14px;margin-bottom:22px}
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px}
+.chart-title{font-size:13px;font-weight:600;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between}
+.chart-badge{font-size:10px;background:var(--surface2);border-radius:4px;padding:2px 7px;color:var(--text-muted)}
+.chart-wrap{position:relative;height:190px}
+.legend{margin-top:10px;display:flex;flex-direction:column;gap:5px;max-height:120px;overflow-y:auto}
+.legend-item{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--text-muted)}
+.legend-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.legend-val{margin-left:auto;font-weight:600;color:var(--text);font-size:11px}
+.tcard{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:22px;overflow:hidden}
+.thead2{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.ttitle{font-size:13px;font-weight:600;flex:1;min-width:80px}
+table{width:100%;border-collapse:collapse}
+th{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px;padding:9px 14px;text-align:left;border-bottom:1px solid var(--border);background:var(--surface2);white-space:nowrap}
+td{padding:10px 14px;font-size:12.5px;border-bottom:1px solid rgba(48,54,61,.4);white-space:nowrap}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,.02)}
+.tfoot{padding:11px 18px;border-top:1px solid var(--border);display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted)}
+.badge{display:inline-flex;align-items:center;font-size:11px;padding:3px 9px;border-radius:20px;font-weight:600;gap:3px}
+.badge-buy{background:var(--blue-bg);color:var(--blue)}
+.badge-sell{background:var(--green-bg);color:var(--green)}
+.badge-profit{background:var(--gold-bg);color:var(--gold)}
+.badge-loss{background:var(--red-bg);color:var(--red)}
+.pos{color:var(--green);font-weight:600}.neg{color:var(--red);font-weight:600}
+.muted{color:var(--text-muted)}
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border-radius:6px;font-size:12.5px;font-weight:600;cursor:pointer;border:none;transition:all .15s}
+.btn-blue{background:var(--blue);color:#fff}.btn-blue:hover{filter:brightness(1.1)}
+.btn-green{background:var(--green);color:#fff}.btn-green:hover{filter:brightness(1.1)}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--text)}.btn-outline:hover{border-color:var(--blue);color:var(--blue)}
+.btn-sm{padding:5px 10px;font-size:11.5px}
+.btn-icon{background:none;border:none;color:var(--text-muted);cursor:pointer;padding:4px 7px;border-radius:4px;font-size:13px;transition:all .15s}
+.btn-icon:hover{background:var(--surface2);color:var(--text)}.btn-icon.del:hover{color:var(--red)}
+.inp{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:8px 11px;color:var(--text);font-size:12.5px;outline:none;transition:border .15s}
+.inp:focus{border-color:var(--blue)}.inp::placeholder{color:var(--text-muted)}
+select.inp{cursor:pointer}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(5px);z-index:200;display:none;align-items:center;justify-content:center}
+.overlay.open{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:13px;padding:26px;width:520px;max-width:96vw;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow);animation:su .2s ease}
+@keyframes su{from{transform:translateY(18px);opacity:0}to{transform:translateY(0);opacity:1}}
+.modal-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+.modal-title{font-size:16px;font-weight:700}
+.modal-x{background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer;line-height:1;padding:2px 6px}
+.type-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+.type-btn{padding:12px;border-radius:8px;border:2px solid var(--border);background:transparent;color:var(--text-muted);font-size:13px;font-weight:700;cursor:pointer;transition:all .15s;text-align:center}
+.type-btn.buy.on{border-color:var(--blue);color:var(--blue);background:var(--blue-bg)}
+.type-btn.sell.on{border-color:var(--green);color:var(--green);background:var(--green-bg)}
+.fg{display:flex;flex-direction:column;gap:5px;margin-bottom:13px}
+.fl{font-size:11px;color:var(--text-muted);font-weight:600}
+.frow{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.frow3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.hint{font-size:10px;color:var(--text-muted);margin-top:3px}
+.modal-ft{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;padding-top:14px;border-top:1px solid var(--border)}
+.toast{position:fixed;bottom:24px;right:24px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:11px 16px;font-size:12.5px;z-index:999;box-shadow:var(--shadow);display:flex;align-items:center;gap:8px;animation:su .2s ease}
+.toast.ok{border-left:3px solid var(--green)}.toast.err{border-left:3px solid var(--red)}
+.expand-row td{background:var(--surface2)!important;padding:0}
+.expand-inner{padding:12px 18px}
+.expand-table{width:100%;border-collapse:collapse;font-size:12px}
+.expand-table td{padding:6px 10px;border-bottom:1px solid var(--border)}
+.expand-table tr:last-child td{border-bottom:none}
+.expand-table th{font-size:10px;color:var(--text-muted);padding:6px 10px;background:transparent;border-bottom:1px solid var(--border)}
+.addr{font-family:monospace;font-size:11px;color:var(--text-muted)}
+.addr-full{font-family:monospace;font-size:11.5px;word-break:break-all;color:var(--blue)}
+.copy-btn{background:none;border:1px solid var(--border);border-radius:4px;color:var(--text-muted);font-size:10px;padding:2px 7px;cursor:pointer;margin-left:6px;transition:all .15s}
+.copy-btn:hover{border-color:var(--blue);color:var(--blue)}
+.pa-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.scard{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:16px}
+.scard-title{padding:14px 18px;border-bottom:1px solid var(--border);font-size:13px;font-weight:600}
+.srow{display:flex;align-items:center;justify-content:space-between;padding:13px 18px;border-bottom:1px solid rgba(48,54,61,.4)}
+.srow:last-child{border-bottom:none}
+.slabel{font-size:13px}.sdesc{font-size:11px;color:var(--text-muted);margin-top:2px}
+.empty{text-align:center;padding:48px;color:var(--text-muted);font-size:13px}
+.empty-icon{font-size:36px;margin-bottom:10px}
+.no-data{display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-muted);font-size:13px}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+@media(max-width:960px){.app{grid-template-columns:1fr}.sidebar{display:none}.cards{grid-template-columns:repeat(2,1fr)}.chart-row{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="sidebar">
+  <div class="logo">
+    <div class="logo-icon">₮</div>
+    <div><div class="logo-name">USDT OTC</div><div class="logo-sub">換匯記帳系統</div></div>
+  </div>
+  <div class="nav-sec">主選單</div>
+  <div class="nav-item active" data-p="dash"><span class="nav-icon">📊</span>儀表板</div>
+  <div class="nav-item" data-p="tx"><span class="nav-icon">📋</span>交易記錄</div>
+  <div class="nav-item" data-p="cp"><span class="nav-icon">👥</span>對手方分析</div>
+  <div class="nav-item" data-p="addr"><span class="nav-icon">🔗</span>地址追蹤</div>
+  <div class="nav-item" data-p="profit"><span class="nav-icon">💰</span>盈利分析</div>
+  <div class="nav-sec">系統</div>
+  <div class="nav-item" data-p="settings"><span class="nav-icon">⚙️</span>設定</div>
+  <div class="sidebar-footer">
+    <button class="btn btn-green" style="width:100%;justify-content:center" onclick="openModal()">＋ 新增交易</button>
+  </div>
+</aside>
+<main class="main">
+
+<!-- DASHBOARD -->
+<div class="page active" id="page-dash">
+  <div class="ph">
+    <div><div class="pt">儀表板</div><div class="ps">USDT OTC 換匯盈利總覽</div></div>
+    <button class="btn btn-blue" onclick="openModal()">＋ 新增交易</button>
+  </div>
+  <div class="cards">
+    <div class="card"><div class="card-label">💼 USDT 庫存</div><div class="card-val c-blue" id="d-inv">0.00</div><div class="card-sub">持有 USDT</div></div>
+    <div class="card"><div class="card-label">📤 買入成本</div><div class="card-val c-red" id="d-cost">0</div><div class="card-sub">付出 TWD</div></div>
+    <div class="card"><div class="card-label">📥 賣出回收</div><div class="card-val c-green" id="d-rev">0</div><div class="card-sub">收回 TWD</div></div>
+    <div class="card"><div class="card-label">🏆 淨盈利</div><div class="card-val" id="d-profit">0</div><div class="card-sub" id="d-prate">利潤率 0%</div></div>
+    <div class="card"><div class="card-label">📈 每USDT均利</div><div class="card-val c-purple" id="d-spread">0.00</div><div class="card-sub">TWD / USDT</div></div>
+  </div>
+  <div class="chart-row">
+    <div class="chart-card">
+      <div class="chart-title">月度 TWD 盈利趨勢 <span class="chart-badge">近6個月</span></div>
+      <div class="chart-wrap"><canvas id="c-trend"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">收USDT 來源 <span class="chart-badge">對手方</span></div>
+      <div class="chart-wrap" id="w-buy-cp"><canvas id="c-buy-cp"></canvas></div>
+      <div class="legend" id="l-buy-cp"></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">出USDT 對象 <span class="chart-badge">對手方</span></div>
+      <div class="chart-wrap" id="w-sell-cp"><canvas id="c-sell-cp"></canvas></div>
+      <div class="legend" id="l-sell-cp"></div>
+    </div>
+  </div>
+  <div class="tcard">
+    <div class="thead2">
+      <span class="ttitle">最近交易</span>
+      <button class="btn btn-outline btn-sm" onclick="nav('tx')">全部記錄 →</button>
+    </div>
+    <table><thead><tr>
+      <th>日期</th><th>類型</th><th>USDT</th><th>TWD</th><th>匯率</th><th>手續費</th><th>對手方</th><th>地址</th><th>FIFO盈利</th>
+    </tr></thead><tbody id="dash-tbody"></tbody></table>
+  </div>
+</div>
+
+<!-- TRANSACTIONS -->
+<div class="page" id="page-tx">
+  <div class="ph">
+    <div><div class="pt">交易記錄</div><div class="ps">完整 USDT 收付紀錄</div></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-outline btn-sm" onclick="exportCSV()">⬇ CSV</button>
+      <button class="btn btn-blue" onclick="openModal()">＋ 新增</button>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+    <input class="inp" id="tx-search" placeholder="搜尋對手方 / 地址 / 備註..." style="flex:1;min-width:150px" oninput="renderTx()">
+    <select class="inp" id="tx-type" onchange="renderTx()">
+      <option value="">全部類型</option><option value="buy">收USDT</option><option value="sell">出USDT</option>
+    </select>
+    <input class="inp" id="tx-from" type="date" onchange="renderTx()">
+    <input class="inp" id="tx-to" type="date" onchange="renderTx()">
+  </div>
+  <div class="tcard">
+    <table><thead><tr>
+      <th>日期</th><th>類型</th><th>USDT數量</th><th>TWD金額</th><th>匯率</th><th>手續費</th><th>對手方</th><th>地址</th><th>FIFO盈利</th><th>備註</th><th>操作</th>
+    </tr></thead><tbody id="tx-tbody"></tbody></table>
+    <div class="tfoot"><span id="tx-count">0 筆</span><span id="tx-summary"></span></div>
+  </div>
+</div>
+
+<!-- COUNTERPARTY -->
+<div class="page" id="page-cp">
+  <div class="ph"><div><div class="pt">對手方分析</div><div class="ps">統計跟誰收USDT、出給誰、各方往來金額</div></div></div>
+  <div class="chart-row" style="grid-template-columns:1fr 1fr">
+    <div class="chart-card">
+      <div class="chart-title">各對手方 — 收USDT量</div>
+      <div class="chart-wrap"><canvas id="c-cp-buy"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">各對手方 — 出USDT量</div>
+      <div class="chart-wrap"><canvas id="c-cp-sell"></canvas></div>
+    </div>
+  </div>
+  <div class="tcard">
+    <div class="thead2"><span class="ttitle">對手方總覽</span><span style="font-size:11px;color:var(--text-muted)">點擊行展開明細</span></div>
+    <table><thead><tr>
+      <th>對手方</th><th>收USDT次</th><th>收USDT量</th><th>付出TWD</th>
+      <th>出USDT次</th><th>出USDT量</th><th>收回TWD</th><th>淨盈虧TWD</th><th>最後交易</th>
+    </tr></thead><tbody id="cp-tbody"></tbody></table>
+  </div>
+</div>
+
+<!-- ADDRESS -->
+<div class="page" id="page-addr">
+  <div class="ph"><div><div class="pt">地址追蹤</div><div class="ps">每個錢包/帳號的全成本與往來統計</div></div></div>
+  <div class="tcard">
+    <table><thead><tr>
+      <th>地址 / 帳號</th><th>關聯對手方</th><th>交易次數</th><th>USDT量</th>
+      <th>全成本(買入TWD)</th><th>回收(賣出TWD)</th><th>淨盈虧</th><th>最後交易</th>
+    </tr></thead><tbody id="addr-tbody"></tbody></table>
+  </div>
+</div>
+
+<!-- PROFIT -->
+<div class="page" id="page-profit">
+  <div class="ph"><div><div class="pt">盈利分析</div><div class="ps">FIFO 成本法 — 逐筆計算每次出USDT的真實盈利</div></div></div>
+  <div class="pa-summary">
+    <div class="card"><div class="card-label">🏆 已實現盈利</div><div class="card-val c-gold" id="pa-total">0</div><div class="card-sub">TWD</div></div>
+    <div class="card"><div class="card-label">📋 出USDT筆數</div><div class="card-val c-blue" id="pa-count">0</div><div class="card-sub">筆</div></div>
+    <div class="card"><div class="card-label">📊 平均每筆盈利</div><div class="card-val c-green" id="pa-avg">0</div><div class="card-sub">TWD</div></div>
+    <div class="card"><div class="card-label">📈 平均利潤率</div><div class="card-val c-purple" id="pa-rate">0%</div><div class="card-sub">盈利/成本</div></div>
+  </div>
+  <div class="chart-card" style="margin-bottom:20px">
+    <div class="chart-title">逐筆盈利走勢 <span class="chart-badge">每次出USDT</span></div>
+    <div class="chart-wrap" style="height:180px"><canvas id="c-profit-trend"></canvas></div>
+  </div>
+  <div class="tcard">
+    <table><thead><tr>
+      <th>日期</th><th>對手方</th><th>出USDT量</th><th>收回TWD</th><th>手續費</th><th>FIFO成本</th><th>已實現盈利</th><th>利潤率</th><th>均買匯率</th><th>賣出匯率</th>
+    </tr></thead><tbody id="profit-tbody"></tbody></table>
+    <div class="tfoot"><span id="profit-count"></span><span id="profit-total"></span></div>
+  </div>
+</div>
+
+<!-- SETTINGS -->
+<div class="page" id="page-settings">
+  <div class="ph"><div><div class="pt">設定</div><div class="ps">資料管理與系統說明</div></div></div>
+  <div class="scard">
+    <div class="scard-title">🗄 資料管理</div>
+    <div class="srow"><div><div class="slabel">匯出 CSV</div><div class="sdesc">匯出全部交易記錄（含 FIFO 盈利）</div></div><button class="btn btn-outline btn-sm" onclick="exportCSV()">⬇ 匯出</button></div>
+    <div class="srow"><div><div class="slabel">JSON 備份</div><div class="sdesc">下載完整資料備份</div></div><button class="btn btn-outline btn-sm" onclick="backupJSON()">💾 備份</button></div>
+    <div class="srow"><div><div class="slabel">匯入 JSON</div><div class="sdesc">從備份檔案還原資料</div></div><button class="btn btn-outline btn-sm" onclick="importJSON()">⬆ 匯入</button></div>
+    <div class="srow"><div><div class="slabel" style="color:var(--red)">清除所有資料</div><div class="sdesc">刪除全部記錄，不可復原</div></div><button class="btn btn-sm" style="background:var(--red-bg);color:var(--red);border:1px solid var(--red)" onclick="clearAll()">🗑 清除</button></div>
+  </div>
+  <div class="scard">
+    <div class="scard-title">ℹ️ 邏輯說明</div>
+    <div class="srow"><div><div class="slabel">收USDT（買入）</div><div class="sdesc">你付出 TWD → 收入 USDT，記錄買入成本與匯率</div></div></div>
+    <div class="srow"><div><div class="slabel">出USDT（賣出）</div><div class="sdesc">你付出 USDT → 收回 TWD，計算已實現盈利</div></div></div>
+    <div class="srow"><div><div class="slabel">FIFO 成本法</div><div class="sdesc">出USDT時以最早批次的買入成本計算盈利（先進先出）</div></div></div>
+    <div class="srow"><div><div class="slabel">盈利公式</div><div class="sdesc">已實現盈利 = (收回TWD − 手續費) − FIFO成本</div></div></div>
+  </div>
+</div>
+
+</main>
+</div>
+
+<!-- MODAL -->
+<div class="overlay" id="modal-overlay">
+<div class="modal">
+  <div class="modal-hd">
+    <div class="modal-title" id="modal-title">新增交易</div>
+    <button class="modal-x" onclick="closeModal()">✕</button>
+  </div>
+  <div class="type-row">
+    <button class="type-btn buy on" id="btn-buy" onclick="setType('buy')">
+      📤 收 USDT<br><small style="font-weight:400;font-size:10px;opacity:.8">付出TWD → 收入USDT</small>
+    </button>
+    <button class="type-btn sell" id="btn-sell" onclick="setType('sell')">
+      📥 出 USDT<br><small style="font-weight:400;font-size:10px;opacity:.8">付出USDT → 收回TWD</small>
+    </button>
+  </div>
+  <div class="frow3">
+    <div class="fg"><label class="fl">USDT 數量 *</label><input class="inp" id="f-usdt" type="number" min="0" step="0.01" placeholder="0.00" oninput="autoCalc('usdt')"></div>
+    <div class="fg"><label class="fl">TWD 金額 *</label><input class="inp" id="f-twd" type="number" min="0" step="1" placeholder="0" oninput="autoCalc('twd')"></div>
+    <div class="fg">
+      <label class="fl">匯率 (TWD/USDT)</label>
+      <input class="inp" id="f-rate" type="number" min="0" step="0.01" placeholder="自動計算" oninput="autoCalc('rate')">
+      <div class="hint">填兩欄自動算第三欄</div>
+    </div>
+  </div>
+  <div class="frow">
+    <div class="fg"><label class="fl">日期 *</label><input class="inp" id="f-date" type="date"></div>
+    <div class="fg"><label class="fl">手續費 TWD</label><input class="inp" id="f-fee" type="number" min="0" step="1" placeholder="0（選填）"></div>
+  </div>
+  <div class="frow">
+    <div class="fg">
+      <label class="fl">對手方名稱</label>
+      <input class="inp" id="f-cp" list="cp-list" placeholder="姓名 / 暱稱">
+      <datalist id="cp-list"></datalist>
+    </div>
+    <div class="fg">
+      <label class="fl">地址 / 帳號</label>
+      <input class="inp" id="f-addr" list="addr-list" placeholder="錢包地址 / 銀行帳號">
+      <datalist id="addr-list"></datalist>
+    </div>
+  </div>
+  <div class="fg"><label class="fl">備註</label><input class="inp" id="f-note" placeholder="選填..."></div>
+  <div class="modal-ft">
+    <button class="btn btn-outline" onclick="closeModal()">取消</button>
+    <button class="btn btn-blue" onclick="saveTx()">儲存交易</button>
+  </div>
+</div>
+</div>
+
+<script>
+const DEMO=[
+  {id:'1',type:'buy', date:'2026-01-15',usdt:5000, twd:160000,rate:32,   fee:0,  counterparty:'王大明',address:'0xA1B2C3D4E5F67890AABB',note:'首次合作'},
+  {id:'2',type:'buy', date:'2026-01-18',usdt:3000, twd:97500, rate:32.5, fee:0,  counterparty:'陳小芳',address:'TPQx1234abcd5678efghijkl',note:''},
+  {id:'3',type:'sell',date:'2026-01-20',usdt:4000, twd:132000,rate:33,   fee:200,counterparty:'李建國',address:'0xDEADBEEF12345678CCDD',note:'快速成交'},
+  {id:'4',type:'buy', date:'2026-01-25',usdt:8000, twd:256000,rate:32,   fee:0,  counterparty:'王大明',address:'0xA1B2C3D4E5F67890AABB',note:'第二筆'},
+  {id:'5',type:'sell',date:'2026-01-28',usdt:3000, twd:99000, rate:33,   fee:150,counterparty:'劉美玲',address:'TRx9876zyxw432100001111',note:''},
+  {id:'6',type:'buy', date:'2026-02-03',usdt:5000, twd:162500,rate:32.5, fee:0,  counterparty:'陳小芳',address:'TPQx1234abcd5678efghijkl',note:'2月份'},
+  {id:'7',type:'sell',date:'2026-02-05',usdt:6000, twd:198000,rate:33,   fee:300,counterparty:'張偉強',address:'0xF1E2D3C4B5A69988EEFF',note:'大單'},
+  {id:'8',type:'buy', date:'2026-02-10',usdt:4000, twd:128000,rate:32,   fee:0,  counterparty:'林志豪',address:'TKLm556600112233xxyy7788',note:''},
+  {id:'9',type:'sell',date:'2026-02-15',usdt:3000, twd:100500,rate:33.5, fee:100,counterparty:'王大明',address:'0xA1B2C3D4E5F67890AABB',note:'回購'},
+  {id:'10',type:'buy',date:'2026-03-01',usdt:6000, twd:192000,rate:32,   fee:0,  counterparty:'陳小芳',address:'TPQx1234abcd5678efghijkl',note:'3月首筆'},
+  {id:'11',type:'sell',date:'2026-03-05',usdt:5000,twd:167500, rate:33.5,fee:250,counterparty:'李建國',address:'0xDEADBEEF12345678CCDD',note:''},
+  {id:'12',type:'buy',date:'2026-03-08',usdt:4000, twd:128000,rate:32,   fee:0,  counterparty:'林志豪',address:'TKLm556600112233xxyy7788',note:''},
+];
+let DB=JSON.parse(localStorage.getItem('usdt-otc')||'null');
+if(!DB){DB={transactions:DEMO};saveDB();}
+function saveDB(){localStorage.setItem('usdt-otc',JSON.stringify(DB));}
+
+function calcFIFO(){
+  const sorted=[...DB.transactions].sort((a,b)=>a.date.localeCompare(b.date)||a.id.localeCompare(b.id));
+  const queue=[];const res={};
+  for(const tx of sorted){
+    if(tx.type==='buy'){queue.push({remaining:tx.usdt,rate:tx.rate});}
+    else{
+      let rem=tx.usdt,cost=0;
+      while(rem>0.0001&&queue.length){
+        const lot=queue[0];const use=Math.min(rem,lot.remaining);
+        cost+=use*lot.rate;lot.remaining-=use;rem-=use;
+        if(lot.remaining<0.0001)queue.shift();
+      }
+      const revenue=tx.twd-(tx.fee||0);
+      res[tx.id]={profit:revenue-cost,costBasis:cost,avgBuyRate:tx.usdt>0?cost/tx.usdt:0};
+    }
+  }
+  return res;
+}
+
+const PAL=['#58a6ff','#3fb950','#d29922','#bc8cff','#f85149','#ff7b72','#79c0ff','#56d364','#ffa657','#db61a2','#4AC8EA','#e3b341'];
+const fN=(n,d=2)=>parseFloat(n||0).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+const fT=n=>fN(n,0);
+const toDay=()=>new Date().toISOString().slice(0,10);
+const short=a=>!a?'—':a.length<=10?a:a.slice(0,6)+'…'+a.slice(-4);
+let CHS={};
+const dCh=id=>{if(CHS[id]){CHS[id].destroy();delete CHS[id];}};
+
+function mkBar(id,labels,datasets){
+  dCh(id);const ctx=document.getElementById(id);if(!ctx)return;
+  CHS[id]=new Chart(ctx,{type:'bar',data:{labels,datasets},options:{
+    responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{labels:{color:'#8b949e',font:{size:10}}}},
+    scales:{x:{grid:{color:'rgba(48,54,61,.4)'},ticks:{color:'#8b949e',font:{size:9}}},y:{grid:{color:'rgba(48,54,61,.4)'},ticks:{color:'#8b949e',font:{size:9}}}}
+  }});
+}
+function mkPie(wrapId,canvasId,labels,vals,colors,legendId){
+  dCh(canvasId);
+  const wrap=document.getElementById(wrapId);
+  if(!labels.length){wrap.innerHTML='<div class="no-data">暫無資料</div>';if(legendId)document.getElementById(legendId).innerHTML='';return;}
+  if(!document.getElementById(canvasId))wrap.innerHTML=`<canvas id="${canvasId}"></canvas>`;
+  CHS[canvasId]=new Chart(document.getElementById(canvasId),{type:'doughnut',
+    data:{labels,datasets:[{data:vals,backgroundColor:colors,borderWidth:2,borderColor:'#161b22',hoverOffset:5}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.label}: ${fN(c.raw)} USDT`}}},cutout:'60%'}
+  });
+  if(legendId){
+    const total=vals.reduce((a,b)=>a+b,0);
+    document.getElementById(legendId).innerHTML=labels.map((l,i)=>`
+      <div class="legend-item"><div class="legend-dot" style="background:${colors[i]}"></div><span>${l}</span>
+      <span class="legend-val">${fN(vals[i])} <span style="color:var(--text-muted)">(${total>0?((vals[i]/total)*100).toFixed(0):0}%)</span></span></div>`).join('');
+  }
+}
+function mkLine(id,labels,vals){
+  dCh(id);const ctx=document.getElementById(id);if(!ctx)return;
+  CHS[id]=new Chart(ctx,{type:'line',data:{labels,datasets:[{data:vals,borderColor:'#d29922',backgroundColor:'rgba(210,153,34,.08)',fill:true,tension:0.4,pointRadius:3,pointBackgroundColor:'#d29922'}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{
+      x:{grid:{color:'rgba(48,54,61,.4)'},ticks:{color:'#8b949e',font:{size:9}}},
+      y:{grid:{color:'rgba(48,54,61,.4)'},ticks:{color:'#8b949e',font:{size:9}}}
+    }}
+  });
+}
+
+function nav(p){
+  document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));
+  document.getElementById('page-'+p).classList.add('active');
+  document.querySelector(`.nav-item[data-p="${p}"]`).classList.add('active');
+  ({dash:renderDash,tx:renderTx,cp:renderCP,addr:renderAddr,profit:renderProfit})[p]?.();
+}
+document.querySelectorAll('.nav-item').forEach(n=>n.addEventListener('click',()=>nav(n.dataset.p)));
+
+function renderDash(){
+  const txs=DB.transactions;
+  const buys=txs.filter(t=>t.type==='buy'),sells=txs.filter(t=>t.type==='sell');
+  const buyU=buys.reduce((s,t)=>s+t.usdt,0),sellU=sells.reduce((s,t)=>s+t.usdt,0);
+  const buyT=buys.reduce((s,t)=>s+t.twd,0),sellT=sells.reduce((s,t)=>s+t.twd,0);
+  const profit=sellT-buyT;
+  document.getElementById('d-inv').textContent=fN(buyU-sellU);
+  document.getElementById('d-cost').textContent=fT(buyT);
+  document.getElementById('d-rev').textContent=fT(sellT);
+  const pe=document.getElementById('d-profit');pe.textContent=fT(profit);pe.className='card-val '+(profit>=0?'c-gold':'c-red');
+  document.getElementById('d-prate').textContent='利潤率 '+(buyT>0?((profit/buyT)*100).toFixed(2):0)+'%';
+  document.getElementById('d-spread').textContent=fN((sellU>0?sellT/sellU:0)-(buyU>0?buyT/buyU:0));
+  const now=new Date();const months=[],bV=[],sV=[],pV=[];
+  for(let i=5;i>=0;i--){
+    const d=new Date(now.getFullYear(),now.getMonth()-i,1);
+    const m=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;months.push(m);
+    const mb=buys.filter(t=>t.date.startsWith(m)).reduce((s,t)=>s+t.twd,0);
+    const ms=sells.filter(t=>t.date.startsWith(m)).reduce((s,t)=>s+t.twd,0);
+    bV.push(mb);sV.push(ms);pV.push(ms-mb);
+  }
+  mkBar('c-trend',months,[
+    {label:'買入成本',data:bV,backgroundColor:'rgba(248,81,73,.55)',borderRadius:3},
+    {label:'賣出回收',data:sV,backgroundColor:'rgba(63,185,80,.55)',borderRadius:3},
+    {label:'盈利',data:pV,type:'line',borderColor:'#d29922',backgroundColor:'transparent',fill:false,tension:0.4,pointRadius:3},
+  ]);
+  const bMap={},sMap={};
+  buys.forEach(t=>{const k=t.counterparty||'未知';bMap[k]=(bMap[k]||0)+t.usdt;});
+  sells.forEach(t=>{const k=t.counterparty||'未知';sMap[k]=(sMap[k]||0)+t.usdt;});
+  const bK=Object.keys(bMap),sK=Object.keys(sMap);
+  mkPie('w-buy-cp','c-buy-cp',bK,Object.values(bMap),PAL.slice(0,bK.length),'l-buy-cp');
+  mkPie('w-sell-cp','c-sell-cp',sK,Object.values(sMap),PAL.slice(3,3+sK.length),'l-sell-cp');
+  const fifo=calcFIFO();
+  const recent=[...txs].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,8);
+  const tb=document.getElementById('dash-tbody');
+  if(!recent.length){tb.innerHTML=`<tr><td colspan="9"><div class="empty"><div class="empty-icon">📭</div>尚無交易記錄</div></td></tr>`;return;}
+  tb.innerHTML=recent.map(t=>{
+    const f=fifo[t.id];
+    const pc=t.type==='sell'&&f?`<span class="${f.profit>=0?'pos':'neg'}">${f.profit>=0?'+':''}${fT(f.profit)}</span>`:'—';
+    return`<tr><td>${t.date}</td><td><span class="badge ${t.type==='buy'?'badge-buy':'badge-sell'}">${t.type==='buy'?'📤 收':'📥 出'}</span></td>
+    <td class="${t.type==='buy'?'c-blue':'c-green'}" style="font-weight:600">${fN(t.usdt)}</td>
+    <td>${fT(t.twd)}</td><td>${fN(t.rate)}</td><td>${t.fee?fT(t.fee):'—'}</td>
+    <td>${t.counterparty||'—'}</td><td><span class="addr" title="${t.address||''}">${short(t.address)}</span></td><td>${pc}</td></tr>`;
+  }).join('');
+}
+
+function renderTx(){
+  const q=(document.getElementById('tx-search').value||'').toLowerCase();
+  const ft=document.getElementById('tx-type').value;
+  const ff=document.getElementById('tx-from').value,ft2=document.getElementById('tx-to').value;
+  const fifo=calcFIFO();
+  let txs=[...DB.transactions].sort((a,b)=>b.date.localeCompare(a.date));
+  if(q)txs=txs.filter(t=>(t.counterparty||'').toLowerCase().includes(q)||(t.address||'').toLowerCase().includes(q)||(t.note||'').toLowerCase().includes(q));
+  if(ft)txs=txs.filter(t=>t.type===ft);
+  if(ff)txs=txs.filter(t=>t.date>=ff);if(ft2)txs=txs.filter(t=>t.date<=ft2);
+  const tb=document.getElementById('tx-tbody');
+  if(!txs.length){tb.innerHTML=`<tr><td colspan="11"><div class="empty"><div class="empty-icon">🔍</div>找不到符合條件的記錄</div></td></tr>`;
+    document.getElementById('tx-count').textContent='0 筆';document.getElementById('tx-summary').textContent='';return;}
+  tb.innerHTML=txs.map(t=>{
+    const f=fifo[t.id];
+    const pc=t.type==='sell'&&f?`<span class="${f.profit>=0?'pos':'neg'}">${f.profit>=0?'+':''}${fT(f.profit)}</span>`:'—';
+    return`<tr><td>${t.date}</td><td><span class="badge ${t.type==='buy'?'badge-buy':'badge-sell'}">${t.type==='buy'?'📤 收':'📥 出'}</span></td>
+    <td class="${t.type==='buy'?'c-blue':'c-green'}" style="font-weight:600">${fN(t.usdt)}</td>
+    <td>${fT(t.twd)}</td><td>${fN(t.rate)}</td><td>${t.fee?fT(t.fee):'—'}</td>
+    <td>${t.counterparty||'—'}</td><td><span class="addr" title="${t.address||''}">${short(t.address)}</span></td>
+    <td>${pc}</td><td class="muted">${t.note||''}</td>
+    <td><button class="btn-icon" onclick="openModal('${t.id}')">✏️</button><button class="btn-icon del" onclick="delTx('${t.id}')">🗑</button></td></tr>`;
+  }).join('');
+  const buys=txs.filter(t=>t.type==='buy'),sells=txs.filter(t=>t.type==='sell');
+  document.getElementById('tx-count').textContent=`共 ${txs.length} 筆`;
+  document.getElementById('tx-summary').innerHTML=
+    `收USDT <span class="c-blue">${fN(buys.reduce((s,t)=>s+t.usdt,0))}</span> 付<span class="neg"> -${fT(buys.reduce((s,t)=>s+t.twd,0))} TWD</span>　`+
+    `出USDT <span class="c-green">${fN(sells.reduce((s,t)=>s+t.usdt,0))}</span> 收<span class="pos"> +${fT(sells.reduce((s,t)=>s+t.twd,0))} TWD</span>`;
+}
+
+let cpExp={};
+function renderCP(){
+  const map={};
+  DB.transactions.forEach(t=>{
+    const k=t.counterparty||'（未填）';
+    if(!map[k])map[k]={name:k,bc:0,bu:0,bt:0,sc:0,su:0,st:0,last:'',txs:[]};
+    const m=map[k];m.txs.push(t);if(t.date>m.last)m.last=t.date;
+    if(t.type==='buy'){m.bc++;m.bu+=t.usdt;m.bt+=t.twd;}else{m.sc++;m.su+=t.usdt;m.st+=t.twd;}
+  });
+  const rows=Object.values(map).sort((a,b)=>b.last.localeCompare(a.last));
+  const tb=document.getElementById('cp-tbody');
+  if(!rows.length){tb.innerHTML=`<tr><td colspan="9"><div class="empty"><div class="empty-icon">👥</div>尚無資料</div></td></tr>`;return;}
+  tb.innerHTML=rows.map(r=>{
+    const net=r.st-r.bt;const exp=cpExp[r.name];
+    return`<tr style="cursor:pointer" onclick="toggleCP('${encodeURIComponent(r.name)}')">
+      <td><strong>${r.name}</strong> <span class="muted" style="font-size:10px">${exp?'▲':'▼'}</span></td>
+      <td class="muted">${r.bc}</td><td class="c-blue">${fN(r.bu)}</td><td class="neg">${fT(r.bt)}</td>
+      <td class="muted">${r.sc}</td><td class="c-green">${fN(r.su)}</td><td class="pos">${fT(r.st)}</td>
+      <td><span class="${net>=0?'pos':'neg'}">${net>=0?'+':''}${fT(net)}</span></td><td class="muted">${r.last}</td>
+    </tr>${exp?`<tr class="expand-row"><td colspan="9"><div class="expand-inner">
+      <table class="expand-table"><thead><tr><th>日期</th><th>類型</th><th>USDT</th><th>TWD</th><th>匯率</th><th>地址</th><th>備註</th></tr></thead>
+      <tbody>${r.txs.sort((a,b)=>b.date.localeCompare(a.date)).map(t=>`<tr>
+        <td>${t.date}</td><td><span class="badge ${t.type==='buy'?'badge-buy':'badge-sell'}" style="font-size:10px">${t.type==='buy'?'收':'出'}</span></td>
+        <td class="${t.type==='buy'?'c-blue':'c-green'}">${fN(t.usdt)}</td><td>${fT(t.twd)}</td><td>${fN(t.rate)}</td>
+        <td><span class="addr">${short(t.address)}</span></td><td class="muted">${t.note||''}</td>
+      </tr>`).join('')}</tbody></table></div></td></tr>`:''}`;
+  }).join('');
+  mkBar('c-cp-buy',rows.map(r=>r.name),[{label:'收USDT量',data:rows.map(r=>r.bu),backgroundColor:rows.map((_,i)=>PAL[i%PAL.length]),borderRadius:4}]);
+  mkBar('c-cp-sell',rows.map(r=>r.name),[{label:'出USDT量',data:rows.map(r=>r.su),backgroundColor:rows.map((_,i)=>PAL[(i+3)%PAL.length]),borderRadius:4}]);
+}
+function toggleCP(n){const k=decodeURIComponent(n);cpExp[k]=!cpExp[k];renderCP();}
+
+function renderAddr(){
+  const map={};
+  DB.transactions.forEach(t=>{
+    const k=t.address||'（未填地址）';
+    if(!map[k])map[k]={addr:k,cps:new Set(),cnt:0,usdt:0,buyTWD:0,sellTWD:0,last:''};
+    const m=map[k];m.cnt++;m.usdt+=t.usdt;if(t.date>m.last)m.last=t.date;
+    if(t.counterparty)m.cps.add(t.counterparty);
+    if(t.type==='buy')m.buyTWD+=t.twd;else m.sellTWD+=t.twd;
+  });
+  const rows=Object.values(map).sort((a,b)=>b.last.localeCompare(a.last));
+  const tb=document.getElementById('addr-tbody');
+  if(!rows.length){tb.innerHTML=`<tr><td colspan="8"><div class="empty"><div class="empty-icon">🔗</div>尚無資料</div></td></tr>`;return;}
+  tb.innerHTML=rows.map(r=>{
+    const net=r.sellTWD-r.buyTWD;const isFake=r.addr==='（未填地址）';
+    return`<tr>
+      <td>${isFake?`<span class="muted">${r.addr}</span>`:`<span class="addr-full">${r.addr}</span>${`<button class="copy-btn" onclick="cpAddr(event,'${r.addr}')">複製</button>`}`}</td>
+      <td>${[...r.cps].join(', ')||'—'}</td><td>${r.cnt}</td><td>${fN(r.usdt)}</td>
+      <td class="neg">${fT(r.buyTWD)}</td><td class="pos">${fT(r.sellTWD)}</td>
+      <td><span class="${net>=0?'pos':'neg'}">${net>=0?'+':''}${fT(net)}</span></td><td class="muted">${r.last}</td>
+    </tr>`;
+  }).join('');
+}
+function cpAddr(e,addr){e.stopPropagation();navigator.clipboard.writeText(addr).then(()=>toast('地址已複製','ok'));}
+
+function renderProfit(){
+  const fifo=calcFIFO();
+  const rows=DB.transactions.filter(t=>t.type==='sell')
+    .sort((a,b)=>a.date.localeCompare(b.date))
+    .map(t=>({...t,...(fifo[t.id]||{profit:0,costBasis:0,avgBuyRate:0})}));
+  const totalP=rows.reduce((s,r)=>s+(r.profit||0),0);
+  const totalC=rows.reduce((s,r)=>s+(r.costBasis||0),0);
+  document.getElementById('pa-total').textContent=fT(totalP);
+  document.getElementById('pa-total').className='card-val '+(totalP>=0?'c-gold':'c-red');
+  document.getElementById('pa-count').textContent=rows.length;
+  document.getElementById('pa-avg').textContent=fT(rows.length?totalP/rows.length:0);
+  document.getElementById('pa-rate').textContent=(totalC>0?(totalP/totalC*100):0).toFixed(2)+'%';
+  mkLine('c-profit-trend',rows.map(r=>r.date),rows.map(r=>r.profit||0));
+  const tb=document.getElementById('profit-tbody');
+  if(!rows.length){tb.innerHTML=`<tr><td colspan="10"><div class="empty"><div class="empty-icon">💰</div>尚無出USDT記錄</div></td></tr>`;return;}
+  tb.innerHTML=[...rows].reverse().map(r=>{
+    const pr=r.profit||0;const rate=r.costBasis>0?((pr/r.costBasis)*100).toFixed(2):'0';
+    return`<tr><td>${r.date}</td><td>${r.counterparty||'—'}</td>
+    <td class="c-green" style="font-weight:600">${fN(r.usdt)}</td><td>${fT(r.twd)}</td>
+    <td>${r.fee?fT(r.fee):'—'}</td><td class="neg">${fT(r.costBasis||0)}</td>
+    <td><strong class="${pr>=0?'pos':'neg'}">${pr>=0?'+':''}${fT(pr)}</strong></td>
+    <td><span class="badge ${pr>=0?'badge-profit':'badge-loss'}">${rate}%</span></td>
+    <td class="muted">${fN(r.avgBuyRate||0)}</td><td class="muted">${fN(r.rate)}</td></tr>`;
+  }).join('');
+  document.getElementById('profit-count').textContent=`共 ${rows.length} 筆出USDT`;
+  document.getElementById('profit-total').innerHTML=`已實現盈利 <strong class="${totalP>=0?'pos':'neg'}">${totalP>=0?'+':''}${fT(totalP)} TWD</strong>`;
+}
+
+let editId=null,curType='buy';
+function openModal(id=null){
+  editId=id;const tx=id?DB.transactions.find(t=>t.id===id):null;
+  document.getElementById('modal-title').textContent=id?'編輯交易':'新增交易';
+  setType(tx?tx.type:'buy');
+  document.getElementById('f-usdt').value=tx?tx.usdt:'';
+  document.getElementById('f-twd').value=tx?tx.twd:'';
+  document.getElementById('f-rate').value=tx?tx.rate:'';
+  document.getElementById('f-date').value=tx?tx.date:toDay();
+  document.getElementById('f-fee').value=tx?(tx.fee||''):'';
+  document.getElementById('f-cp').value=tx?(tx.counterparty||''):'';
+  document.getElementById('f-addr').value=tx?(tx.address||''):'';
+  document.getElementById('f-note').value=tx?(tx.note||''):'';
+  document.getElementById('cp-list').innerHTML=[...new Set(DB.transactions.map(t=>t.counterparty).filter(Boolean))].map(c=>`<option value="${c}">`).join('');
+  document.getElementById('addr-list').innerHTML=[...new Set(DB.transactions.map(t=>t.address).filter(Boolean))].map(a=>`<option value="${a}">`).join('');
+  document.getElementById('modal-overlay').classList.add('open');
+  setTimeout(()=>document.getElementById('f-usdt').focus(),80);
+}
+function closeModal(){document.getElementById('modal-overlay').classList.remove('open');}
+document.getElementById('modal-overlay').addEventListener('click',e=>{if(e.target===document.getElementById('modal-overlay'))closeModal();});
+function setType(t){curType=t;document.getElementById('btn-buy').classList.toggle('on',t==='buy');document.getElementById('btn-sell').classList.toggle('on',t==='sell');}
+function autoCalc(changed){
+  const u=parseFloat(document.getElementById('f-usdt').value)||0;
+  const tw=parseFloat(document.getElementById('f-twd').value)||0;
+  const r=parseFloat(document.getElementById('f-rate').value)||0;
+  if(changed==='usdt'||changed==='twd'){if(u>0&&tw>0)document.getElementById('f-rate').value=(tw/u).toFixed(4);}
+  else if(changed==='rate'){if(u>0&&r>0)document.getElementById('f-twd').value=Math.round(u*r);else if(tw>0&&r>0)document.getElementById('f-usdt').value=(tw/r).toFixed(2);}
+}
+function saveTx(){
+  const usdt=parseFloat(document.getElementById('f-usdt').value);
+  const twd=parseFloat(document.getElementById('f-twd').value);
+  const date=document.getElementById('f-date').value;
+  if(!usdt||usdt<=0)return toast('請輸入 USDT 數量','err');
+  if(!twd||twd<=0)return toast('請輸入 TWD 金額','err');
+  if(!date)return toast('請選擇日期','err');
+  const tx={id:editId||Date.now().toString(36)+Math.random().toString(36).slice(2,5),type:curType,usdt,twd,rate:parseFloat((twd/usdt).toFixed(4)),
+    fee:parseFloat(document.getElementById('f-fee').value)||0,date,
+    counterparty:document.getElementById('f-cp').value.trim(),
+    address:document.getElementById('f-addr').value.trim(),
+    note:document.getElementById('f-note').value.trim()};
+  if(editId){const i=DB.transactions.findIndex(t=>t.id===editId);DB.transactions[i]=tx;}
+  else DB.transactions.push(tx);
+  saveDB();closeModal();renderActive();toast(editId?'已更新交易':'已新增交易','ok');
+}
+function delTx(id){if(!confirm('確定刪除？'))return;DB.transactions=DB.transactions.filter(t=>t.id!==id);saveDB();renderActive();toast('已刪除','ok');}
+function renderActive(){({dash:renderDash,tx:renderTx,cp:renderCP,addr:renderAddr,profit:renderProfit})[document.querySelector('.page.active').id.replace('page-','')]?.();}
+
+function exportCSV(){
+  const fifo=calcFIFO();
+  const rows=[['日期','類型','USDT數量','TWD金額','匯率','手續費TWD','對手方','地址','FIFO盈利TWD','備註']];
+  [...DB.transactions].sort((a,b)=>b.date.localeCompare(a.date)).forEach(t=>{
+    const f=fifo[t.id];
+    rows.push([t.date,t.type==='buy'?'收USDT':'出USDT',t.usdt,t.twd,t.rate,t.fee||0,t.counterparty||'',t.address||'',t.type==='sell'&&f?f.profit.toFixed(2):'',t.note||'']);
+  });
+  dl('\ufeff'+rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n'),`USDT_OTC_${toDay()}.csv`,'text/csv;charset=utf-8');
+  toast('CSV 匯出成功','ok');
+}
+function backupJSON(){dl(JSON.stringify(DB,null,2),`USDT_OTC_備份_${toDay()}.json`,'application/json');toast('備份完成','ok');}
+function importJSON(){
+  const inp=document.createElement('input');inp.type='file';inp.accept='.json';
+  inp.onchange=e=>{const fr=new FileReader();fr.onload=ev=>{try{const d=JSON.parse(ev.target.result);if(!d.transactions)throw 0;DB=d;saveDB();renderActive();toast('匯入成功','ok');}catch{toast('格式錯誤','err');}};fr.readAsText(e.target.files[0]);};
+  inp.click();
+}
+function clearAll(){if(!confirm('確定清除所有資料？'))return;DB={transactions:[]};saveDB();renderActive();toast('已清除','ok');}
+function dl(content,name,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([content],{type}));a.download=name;a.click();}
+function toast(msg,type='ok'){const el=document.createElement('div');el.className=`toast ${type}`;el.innerHTML=`${type==='ok'?'✅':'❌'} ${msg}`;document.body.appendChild(el);setTimeout(()=>el.remove(),2600);}
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape')closeModal();
+  if(e.key==='n'&&!e.target.matches('input,select,textarea')&&!document.getElementById('modal-overlay').classList.contains('open'))openModal();
+});
+renderDash();
+</script>
+</body>
+</html>
