@@ -104,7 +104,30 @@ select.inp{cursor:pointer}
 .empty-icon{font-size:36px;margin-bottom:10px}
 .no-data{display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-muted);font-size:13px}
 ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
-@media(max-width:960px){.app{grid-template-columns:1fr}.sidebar{display:none}.cards{grid-template-columns:repeat(2,1fr)}.chart-row{grid-template-columns:1fr}}
+.mob-nav{display:none}
+@media(max-width:960px){
+  .app{grid-template-columns:1fr}
+  .sidebar{display:none}
+  .main{padding:16px 12px 72px}
+  .cards{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+  .card{padding:14px}
+  .card-val{font-size:18px}
+  .chart-row{grid-template-columns:1fr}
+  .pa-summary{grid-template-columns:repeat(2,1fr);gap:10px}
+  .tcard{overflow-x:auto}
+  .frow{grid-template-columns:1fr}
+  .frow3{grid-template-columns:1fr}
+  .modal{padding:18px 14px}
+  .tfoot{flex-direction:column;gap:4px;align-items:flex-start}
+  .ph{flex-wrap:wrap}
+  .mob-nav{display:flex;position:fixed;bottom:0;left:0;right:0;background:var(--surface);border-top:1px solid var(--border);z-index:100;padding-bottom:env(safe-area-inset-bottom,0px)}
+  .mob-nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 4px;color:var(--text-muted);cursor:pointer;gap:3px;transition:color .15s;font-size:10px;min-width:0}
+  .mob-nav-item .nav-icon{font-size:20px;width:auto;line-height:1}
+  .mob-nav-item span{font-size:10px;white-space:nowrap}
+  .mob-nav-item.active{color:var(--blue)}
+  .mob-nav-add{flex:0 0 48px;display:flex;align-items:center;justify-content:center;margin:6px 8px;background:var(--blue);color:#fff;border-radius:50%;width:48px;height:48px;font-size:24px;cursor:pointer;box-shadow:0 2px 10px rgba(88,166,255,.45);transition:filter .15s}
+  .mob-nav-add:hover{filter:brightness(1.1)}
+}
 </style>
 </head>
 <body>
@@ -270,6 +293,16 @@ select.inp{cursor:pointer}
 </div>
 
 </main>
+
+<!-- MOBILE BOTTOM NAV -->
+<nav class="mob-nav">
+  <div class="mob-nav-item active" data-p="dash"><span class="nav-icon">📊</span><span>儀表板</span></div>
+  <div class="mob-nav-item" data-p="tx"><span class="nav-icon">📋</span><span>記錄</span></div>
+  <div class="mob-nav-add" onclick="openModal()">＋</div>
+  <div class="mob-nav-item" data-p="profit"><span class="nav-icon">💰</span><span>盈利</span></div>
+  <div class="mob-nav-item" data-p="settings"><span class="nav-icon">⚙️</span><span>設定</span></div>
+</nav>
+
 </div>
 
 <!-- MODAL -->
@@ -321,25 +354,43 @@ select.inp{cursor:pointer}
 </div>
 
 <script>
+// ═══════════════════════════════════════════
+// DATA
+// ═══════════════════════════════════════════
 let DB=JSON.parse(localStorage.getItem('usdt-otc')||'null');
 if(!DB){DB={transactions:[]};saveDB();}
 function saveDB(){localStorage.setItem('usdt-otc',JSON.stringify(DB));}
 
+// ═══════════════════════════════════════════
+// FIFO COST BASIS
+// ═══════════════════════════════════════════
 function calcFIFO(){
   const sorted=[...DB.transactions].sort((a,b)=>a.date.localeCompare(b.date)||a.id.localeCompare(b.id));
-  const queue=[];const res={};
+  const queue=[];
+  const res={};
   for(const tx of sorted){
-    if(tx.type==='buy'){queue.push({remaining:tx.usdt,rate:tx.rate});}
-    else{
+    if(tx.type==='buy'){
+      queue.push({remaining:tx.usdt,rate:tx.rate});
+    } else {
       let rem=tx.usdt,cost=0;
-      while(rem>0.0001&&queue.length){const lot=queue[0];const use=Math.min(rem,lot.remaining);cost+=use*lot.rate;lot.remaining-=use;rem-=use;if(lot.remaining<0.0001)queue.shift();}
+      while(rem>0.0001&&queue.length){
+        const lot=queue[0];
+        const use=Math.min(rem,lot.remaining);
+        cost+=use*lot.rate;
+        lot.remaining-=use;rem-=use;
+        if(lot.remaining<0.0001)queue.shift();
+      }
       const revenue=tx.twd-(tx.fee||0);
-      res[tx.id]={profit:revenue-cost,costBasis:cost,avgBuyRate:tx.usdt>0?cost/tx.usdt:0};
+      const profit=revenue-cost;
+      res[tx.id]={profit,costBasis:cost,avgBuyRate:tx.usdt>0?cost/tx.usdt:0};
     }
   }
   return res;
 }
 
+// ═══════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════
 const PAL=['#58a6ff','#3fb950','#d29922','#bc8cff','#f85149','#ff7b72','#79c0ff','#56d364','#ffa657','#db61a2','#4AC8EA','#e3b341'];
 const fN=(n,d=2)=>parseFloat(n||0).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
 const fT=n=>fN(n,0);
@@ -348,121 +399,417 @@ const short=a=>!a?'—':a.length<=10?a:a.slice(0,6)+'…'+a.slice(-4);
 let CHS={};
 const dCh=id=>{if(CHS[id]){CHS[id].destroy();delete CHS[id];}};
 
-function mkBar(id,labels,datasets){dCh(id);const ctx=document.getElementById(id);if(!ctx)return;CHS[id]=new Chart(ctx,{type:'bar',data:{labels,datasets},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8b949e',font:{size:10}}}},scales:{x:{grid:{color:'rgba(48,54,61,.4)'},ticks:{color:'#8b949e',font:{size:9}}},y:{grid:{color:'rgba(48,54,61,.4)'},ticks:{color:'#8b949e',font:{size:9}}}}}});}
-function mkPie(wrapId,canvasId,labels,vals,colors,legendId){dCh(canvasId);const wrap=document.getElementById(wrapId);if(!labels.length){wrap.innerHTML='<div class="no-data">暫無資料</div>';if(legendId)document.getElementById(legendId).innerHTML='';return;}if(!document.getElementById(canvasId))wrap.innerHTML=`<canvas id="${canvasId}"></canvas>`;CHS[canvasId]=new Chart(document.getElementById(canvasId),{type:'doughnut',data:{labels,datasets:[{data:vals,backgroundColor:colors,borderWidth:2,borderColor:'#161b22',hoverOffset:5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.label}: ${fN(c.raw)} USDT`}}},cutout:'60%'}});if(legendId){const total=vals.reduce((a,b)=>a+b,0);document.getElementById(legendId).innerHTML=labels.map((l,i)=>`<div class="legend-item"><div class="legend-dot" style="background:${colors[i]}"></div><span>${l}</span><span class="legend-val">${fN(vals[i])} <span style="color:var(--text-muted)">(${total>0?((vals[i]/total)*100).toFixed(0):0}%)</span></span></div>`).join('');}}
-function mkLine(id,labels,vals,color){dCh(id);const ctx=document.getElementById(id);if(!ctx)return;CHS[id]=new Chart(ctx,{type:'line',data:{labels,datasets:[{data:vals,borderColor:color||'#d29922',backgroundColor:'rgba(210,153,34,.08)',fill:true,tension:0.4,pointRadius:3,pointBackgroundColor:color||'#d29922'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'rgba(48,54,61,.4)'},ticks:{color:'#8b949e',font:{size:9}}},y:{grid:{color:'rgba(48,54,61,.4)'},ticks:{color:'#8b949e',font:{size:9}}}}}});}
+function mkBar(id,labels,datasets){
+  dCh(id);const ctx=document.getElementById(id);if(!ctx)return;
+  CHS[id]=new Chart(ctx,{type:'bar',data:{labels,datasets},options:{
+    responsive:true,maintainAspectRatio:false,
+    plugins:{legend:{labels:{color:'#8b949e',font:{size:10}}}},
+    scales:{x:{grid:{color:'rgba(48,54,61,.4)'},ticks:{color:'#8b949e',font:{size:9}}},y:{grid:{color:'rgba(48,54,61,.4)'},ticks:{color:'#8b949e',font:{size:9}}}}
+  }});
+}
 
-function nav(p){document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));document.getElementById('page-'+p).classList.add('active');document.querySelector(`.nav-item[data-p="${p}"]`).classList.add('active');({dash:renderDash,tx:renderTx,cp:renderCP,addr:renderAddr,profit:renderProfit})[p]?.();}
-document.querySelectorAll('.nav-item').forEach(n=>n.addEventListener('click',()=>nav(n.dataset.p)));
+function mkPie(wrapId,canvasId,labels,vals,colors,legendId){
+  dCh(canvasId);
+  const wrap=document.getElementById(wrapId);
+  if(!labels.length){wrap.innerHTML='<div class="no-data">暫無資料</div>';if(legendId)document.getElementById(legendId).innerHTML='';return;}
+  if(!document.getElementById(canvasId))wrap.innerHTML=`<canvas id="${canvasId}"></canvas>`;
+  const ctx=document.getElementById(canvasId);
+  CHS[canvasId]=new Chart(ctx,{type:'doughnut',data:{labels,datasets:[{data:vals,backgroundColor:colors,borderWidth:2,borderColor:'#161b22',hoverOffset:5}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${c.label}: ${fN(c.raw)} USDT`}}},cutout:'60%'}
+  });
+  if(legendId){
+    const total=vals.reduce((a,b)=>a+b,0);
+    document.getElementById(legendId).innerHTML=labels.map((l,i)=>`
+      <div class="legend-item"><div class="legend-dot" style="background:${colors[i]}"></div><span>${l}</span>
+      <span class="legend-val">${fN(vals[i])} <span style="color:var(--text-muted)">(${total>0?((vals[i]/total)*100).toFixed(0):0}%)</span></span></div>`).join('');
+  }
+}
 
+function mkLine(id,labels,vals,color){
+  dCh(id);const ctx=document.getElementById(id);if(!ctx)return;
+  CHS[id]=new Chart(ctx,{type:'line',data:{labels,datasets:[{data:vals,borderColor:color||'#d29922',backgroundColor:'rgba(210,153,34,.08)',fill:true,tension:0.4,pointRadius:3,pointBackgroundColor:color||'#d29922'}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{
+      x:{grid:{color:'rgba(48,54,61,.4)'},ticks:{color:'#8b949e',font:{size:9}}},
+      y:{grid:{color:'rgba(48,54,61,.4)'},ticks:{color:'#8b949e',font:{size:9}}}
+    }}
+  });
+}
+
+// ═══════════════════════════════════════════
+// NAV
+// ═══════════════════════════════════════════
+function nav(p){
+  document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.nav-item,.mob-nav-item').forEach(x=>x.classList.remove('active'));
+  document.getElementById('page-'+p).classList.add('active');
+  document.querySelector(`.nav-item[data-p="${p}"]`).classList.add('active');
+  document.querySelector(`.mob-nav-item[data-p="${p}"]`)?.classList.add('active');
+  const fn={dash:renderDash,tx:renderTx,cp:renderCP,addr:renderAddr,profit:renderProfit};
+  if(fn[p])fn[p]();
+}
+document.querySelectorAll('.nav-item,.mob-nav-item[data-p]').forEach(n=>n.addEventListener('click',()=>nav(n.dataset.p)));
+
+// ═══════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════
 function renderDash(){
-  const txs=DB.transactions;const buys=txs.filter(t=>t.type==='buy');const sells=txs.filter(t=>t.type==='sell');
-  const buyU=buys.reduce((s,t)=>s+t.usdt,0),sellU=sells.reduce((s,t)=>s+t.usdt,0);
-  const buyT=buys.reduce((s,t)=>s+t.twd,0),sellT=sells.reduce((s,t)=>s+t.twd,0);
-  const profit=sellT-buyT;
-  document.getElementById('d-inv').textContent=fN(buyU-sellU);
-  document.getElementById('d-cost').textContent=fT(buyT);
-  document.getElementById('d-rev').textContent=fT(sellT);
-  const pe=document.getElementById('d-profit');pe.textContent=fT(profit);pe.className='card-val '+(profit>=0?'c-gold':'c-red');
-  document.getElementById('d-prate').textContent='利潤率 '+(buyT>0?((profit/buyT)*100).toFixed(2):0)+'%';
-  document.getElementById('d-spread').textContent=fN((sellU>0?sellT/sellU:0)-(buyU>0?buyT/buyU:0));
-  const now=new Date();const months=[],bV=[],sV=[],pV=[];
-  for(let i=5;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);const m=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;months.push(m);const mb=buys.filter(t=>t.date.startsWith(m)).reduce((s,t)=>s+t.twd,0);const ms=sells.filter(t=>t.date.startsWith(m)).reduce((s,t)=>s+t.twd,0);bV.push(mb);sV.push(ms);pV.push(ms-mb);}
-  mkBar('c-trend',months,[{label:'買入成本',data:bV,backgroundColor:'rgba(248,81,73,.55)',borderRadius:3},{label:'賣出回收',data:sV,backgroundColor:'rgba(63,185,80,.55)',borderRadius:3},{label:'盈利',data:pV,type:'line',borderColor:'#d29922',backgroundColor:'transparent',fill:false,tension:0.4,pointRadius:3}]);
-  const bMap={},sMap={};buys.forEach(t=>{const k=t.counterparty||'未知';bMap[k]=(bMap[k]||0)+t.usdt;});sells.forEach(t=>{const k=t.counterparty||'未知';sMap[k]=(sMap[k]||0)+t.usdt;});
-  const bK=Object.keys(bMap),sK=Object.keys(sMap);
-  mkPie('w-buy-cp','c-buy-cp',bK,Object.values(bMap),PAL.slice(0,bK.length),'l-buy-cp');
-  mkPie('w-sell-cp','c-sell-cp',sK,Object.values(sMap),PAL.slice(3,3+sK.length),'l-sell-cp');
-  const fifo=calcFIFO();const recent=[...txs].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,8);
+  const txs=DB.transactions;
+  const buys=txs.filter(t=>t.type==='buy');
+  const sells=txs.filter(t=>t.type==='sell');
+  const buyUSDT=buys.reduce((s,t)=>s+t.usdt,0);
+  const sellUSDT=sells.reduce((s,t)=>s+t.usdt,0);
+  const buyTWD=buys.reduce((s,t)=>s+t.twd,0);
+  const sellTWD=sells.reduce((s,t)=>s+t.twd,0);
+  const inv=buyUSDT-sellUSDT;
+  const profit=sellTWD-buyTWD;
+  const avgBuy=buyUSDT>0?buyTWD/buyUSDT:0;
+  const avgSell=sellUSDT>0?sellTWD/sellUSDT:0;
+
+  document.getElementById('d-inv').textContent=fN(inv);
+  document.getElementById('d-cost').textContent=fT(buyTWD);
+  document.getElementById('d-rev').textContent=fT(sellTWD);
+  const pe=document.getElementById('d-profit');
+  pe.textContent=fT(profit);pe.className='card-val '+(profit>=0?'c-gold':'c-red');
+  document.getElementById('d-prate').textContent='利潤率 '+(buyTWD>0?((profit/buyTWD)*100).toFixed(2):0)+'%';
+  document.getElementById('d-spread').textContent=fN(avgSell-avgBuy);
+
+  const now=new Date();const months=[];const bVals=[],sVals=[],pVals=[];
+  for(let i=5;i>=0;i--){
+    const d=new Date(now.getFullYear(),now.getMonth()-i,1);
+    const m=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    months.push(m);
+    const mb=buys.filter(t=>t.date.startsWith(m)).reduce((s,t)=>s+t.twd,0);
+    const ms=sells.filter(t=>t.date.startsWith(m)).reduce((s,t)=>s+t.twd,0);
+    bVals.push(mb);sVals.push(ms);pVals.push(ms-mb);
+  }
+  mkBar('c-trend',months,[
+    {label:'買入成本TWD',data:bVals,backgroundColor:'rgba(248,81,73,.55)',borderRadius:3},
+    {label:'賣出回收TWD',data:sVals,backgroundColor:'rgba(63,185,80,.55)',borderRadius:3},
+    {label:'盈利TWD',data:pVals,backgroundColor:'rgba(210,153,34,.85)',borderRadius:3,type:'line',borderColor:'#d29922',fill:false,tension:0.4,pointRadius:3},
+  ]);
+
+  const bMap={},sMap={};
+  buys.forEach(t=>{const k=t.counterparty||'未知';bMap[k]=(bMap[k]||0)+t.usdt;});
+  sells.forEach(t=>{const k=t.counterparty||'未知';sMap[k]=(sMap[k]||0)+t.usdt;});
+  const bK=Object.keys(bMap),bV=Object.values(bMap);
+  const sK=Object.keys(sMap),sV=Object.values(sMap);
+  mkPie('w-buy-cp','c-buy-cp',bK,bV,PAL.slice(0,bK.length),'l-buy-cp');
+  mkPie('w-sell-cp','c-sell-cp',sK,sV,PAL.slice(3,3+sK.length),'l-sell-cp');
+
+  const fifo=calcFIFO();
+  const recent=[...txs].sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id)).slice(0,8);
   const tb=document.getElementById('dash-tbody');
   if(!recent.length){tb.innerHTML=`<tr><td colspan="9"><div class="empty"><div class="empty-icon">📭</div>尚無交易記錄<br><small>點擊「新增交易」開始記帳</small></div></td></tr>`;return;}
-  tb.innerHTML=recent.map(t=>{const f=fifo[t.id];const pc=t.type==='sell'&&f?`<span class="${f.profit>=0?'pos':'neg'}">${f.profit>=0?'+':''}${fT(f.profit)}</span>`:'—';return`<tr><td>${t.date}</td><td><span class="badge ${t.type==='buy'?'badge-buy':'badge-sell'}">${t.type==='buy'?'📤 收':'📥 出'}</span></td><td class="${t.type==='buy'?'c-blue':'c-green'}" style="font-weight:600">${fN(t.usdt)}</td><td>${fT(t.twd)}</td><td>${fN(t.rate)}</td><td>${t.fee?fT(t.fee):'—'}</td><td>${t.counterparty||'—'}</td><td><span class="addr" title="${t.address||''}">${short(t.address)}</span></td><td>${pc}</td></tr>`;}).join('');
+  tb.innerHTML=recent.map(t=>{
+    const f=fifo[t.id];
+    const pc=t.type==='sell'&&f?`<span class="${f.profit>=0?'pos':'neg'}">${f.profit>=0?'+':''}${fT(f.profit)}</span>`:'—';
+    return`<tr>
+      <td>${t.date}</td>
+      <td><span class="badge ${t.type==='buy'?'badge-buy':'badge-sell'}">${t.type==='buy'?'📤 收':'📥 出'}</span></td>
+      <td class="${t.type==='buy'?'c-blue':'c-green'}" style="font-weight:600">${fN(t.usdt)}</td>
+      <td>${fT(t.twd)}</td><td>${fN(t.rate)}</td>
+      <td>${t.fee?fT(t.fee):'—'}</td>
+      <td>${t.counterparty||'—'}</td>
+      <td><span class="addr" title="${t.address||''}">${short(t.address)}</span></td>
+      <td>${pc}</td>
+    </tr>`;
+  }).join('');
 }
 
+// ═══════════════════════════════════════════
+// TRANSACTIONS
+// ═══════════════════════════════════════════
 function renderTx(){
-  const q=(document.getElementById('tx-search').value||'').toLowerCase();const ft=document.getElementById('tx-type').value;const ff=document.getElementById('tx-from').value;const ft2=document.getElementById('tx-to').value;const fifo=calcFIFO();
-  let txs=[...DB.transactions].sort((a,b)=>b.date.localeCompare(a.date));
+  const q=(document.getElementById('tx-search').value||'').toLowerCase();
+  const ft=document.getElementById('tx-type').value;
+  const ff=document.getElementById('tx-from').value;
+  const ft2=document.getElementById('tx-to').value;
+  const fifo=calcFIFO();
+  let txs=[...DB.transactions].sort((a,b)=>b.date.localeCompare(a.date)||b.id.localeCompare(a.id));
   if(q)txs=txs.filter(t=>(t.counterparty||'').toLowerCase().includes(q)||(t.address||'').toLowerCase().includes(q)||(t.note||'').toLowerCase().includes(q));
-  if(ft)txs=txs.filter(t=>t.type===ft);if(ff)txs=txs.filter(t=>t.date>=ff);if(ft2)txs=txs.filter(t=>t.date<=ft2);
+  if(ft)txs=txs.filter(t=>t.type===ft);
+  if(ff)txs=txs.filter(t=>t.date>=ff);
+  if(ft2)txs=txs.filter(t=>t.date<=ft2);
   const tb=document.getElementById('tx-tbody');
-  if(!txs.length){tb.innerHTML=`<tr><td colspan="11"><div class="empty"><div class="empty-icon">🔍</div>找不到符合條件的記錄</div></td></tr>`;document.getElementById('tx-count').textContent='0 筆';document.getElementById('tx-summary').textContent='';return;}
-  tb.innerHTML=txs.map(t=>{const f=fifo[t.id];const pc=t.type==='sell'&&f?`<span class="${f.profit>=0?'pos':'neg'}">${f.profit>=0?'+':''}${fT(f.profit)}</span>`:'—';return`<tr><td>${t.date}</td><td><span class="badge ${t.type==='buy'?'badge-buy':'badge-sell'}">${t.type==='buy'?'📤 收':'📥 出'}</span></td><td class="${t.type==='buy'?'c-blue':'c-green'}" style="font-weight:600">${fN(t.usdt)}</td><td>${fT(t.twd)}</td><td>${fN(t.rate)}</td><td>${t.fee?fT(t.fee):'—'}</td><td>${t.counterparty||'—'}</td><td><span class="addr" title="${t.address||''}">${short(t.address)}</span></td><td>${pc}</td><td class="muted">${t.note||''}</td><td><button class="btn-icon" onclick="openModal('${t.id}')">✏️</button><button class="btn-icon del" onclick="delTx('${t.id}')">🗑</button></td></tr>`;}).join('');
+  if(!txs.length){
+    tb.innerHTML=`<tr><td colspan="11"><div class="empty"><div class="empty-icon">🔍</div>找不到符合條件的記錄</div></td></tr>`;
+    document.getElementById('tx-count').textContent='0 筆';
+    document.getElementById('tx-summary').textContent='';return;
+  }
+  tb.innerHTML=txs.map(t=>{
+    const f=fifo[t.id];
+    const pc=t.type==='sell'&&f?`<span class="${f.profit>=0?'pos':'neg'}">${f.profit>=0?'+':''}${fT(f.profit)}</span>`:'—';
+    return`<tr>
+      <td>${t.date}</td>
+      <td><span class="badge ${t.type==='buy'?'badge-buy':'badge-sell'}">${t.type==='buy'?'📤 收':'📥 出'}</span></td>
+      <td class="${t.type==='buy'?'c-blue':'c-green'}" style="font-weight:600">${fN(t.usdt)}</td>
+      <td>${fT(t.twd)}</td><td>${fN(t.rate)}</td>
+      <td>${t.fee?fT(t.fee):'—'}</td>
+      <td>${t.counterparty||'—'}</td>
+      <td><span class="addr" title="${t.address||''}">${short(t.address)}</span></td>
+      <td>${pc}</td>
+      <td class="muted" style="max-width:100px;overflow:hidden;text-overflow:ellipsis">${t.note||''}</td>
+      <td>
+        <button class="btn-icon" onclick="openModal('${t.id}')" title="編輯">✏️</button>
+        <button class="btn-icon del" onclick="delTx('${t.id}')" title="刪除">🗑</button>
+      </td>
+    </tr>`;
+  }).join('');
   const buys=txs.filter(t=>t.type==='buy'),sells=txs.filter(t=>t.type==='sell');
   document.getElementById('tx-count').textContent=`共 ${txs.length} 筆`;
-  document.getElementById('tx-summary').innerHTML=`收USDT <span class="c-blue">${fN(buys.reduce((s,t)=>s+t.usdt,0))}</span> 付<span class="neg"> -${fT(buys.reduce((s,t)=>s+t.twd,0))} TWD</span>　出USDT <span class="c-green">${fN(sells.reduce((s,t)=>s+t.usdt,0))}</span> 收<span class="pos"> +${fT(sells.reduce((s,t)=>s+t.twd,0))} TWD</span>`;
+  document.getElementById('tx-summary').innerHTML=
+    `收USDT <span class="c-blue">${fN(buys.reduce((s,t)=>s+t.usdt,0))}</span> 付<span class="neg"> -${fT(buys.reduce((s,t)=>s+t.twd,0))} TWD</span>　　`+
+    `出USDT <span class="c-green">${fN(sells.reduce((s,t)=>s+t.usdt,0))}</span> 收<span class="pos"> +${fT(sells.reduce((s,t)=>s+t.twd,0))} TWD</span>`;
 }
 
+// ═══════════════════════════════════════════
+// COUNTERPARTY
+// ═══════════════════════════════════════════
 let cpExp={};
 function renderCP(){
-  const map={};DB.transactions.forEach(t=>{const k=t.counterparty||'（未填）';if(!map[k])map[k]={name:k,bc:0,bu:0,bt:0,sc:0,su:0,st:0,last:'',txs:[]};const m=map[k];m.txs.push(t);if(t.date>m.last)m.last=t.date;if(t.type==='buy'){m.bc++;m.bu+=t.usdt;m.bt+=t.twd;}else{m.sc++;m.su+=t.usdt;m.st+=t.twd;}});
+  const txs=DB.transactions;
+  const map={};
+  txs.forEach(t=>{
+    const k=t.counterparty||'（未填）';
+    if(!map[k])map[k]={name:k,bc:0,bu:0,bt:0,sc:0,su:0,st:0,last:'',txs:[]};
+    const m=map[k];m.txs.push(t);
+    if(t.date>m.last)m.last=t.date;
+    if(t.type==='buy'){m.bc++;m.bu+=t.usdt;m.bt+=t.twd;}
+    else{m.sc++;m.su+=t.usdt;m.st+=t.twd;}
+  });
   const rows=Object.values(map).sort((a,b)=>b.last.localeCompare(a.last));
   const tb=document.getElementById('cp-tbody');
   if(!rows.length){tb.innerHTML=`<tr><td colspan="9"><div class="empty"><div class="empty-icon">👥</div>尚無資料</div></td></tr>`;return;}
-  tb.innerHTML=rows.map(r=>{const net=r.st-r.bt;const exp=cpExp[r.name];return`<tr style="cursor:pointer" onclick="toggleCP('${encodeURIComponent(r.name)}')"><td><strong>${r.name}</strong> <span class="muted" style="font-size:10px">${exp?'▲':'▼'}</span></td><td class="muted">${r.bc}</td><td class="c-blue">${fN(r.bu)}</td><td class="neg">${fT(r.bt)}</td><td class="muted">${r.sc}</td><td class="c-green">${fN(r.su)}</td><td class="pos">${fT(r.st)}</td><td><span class="${net>=0?'pos':'neg'}">${net>=0?'+':''}${fT(net)}</span></td><td class="muted">${r.last}</td></tr>${exp?`<tr class="expand-row"><td colspan="9"><div class="expand-inner"><table class="expand-table"><thead><tr><th>日期</th><th>類型</th><th>USDT</th><th>TWD</th><th>匯率</th><th>地址</th><th>備註</th></tr></thead><tbody>${r.txs.sort((a,b)=>b.date.localeCompare(a.date)).map(t=>`<tr><td>${t.date}</td><td><span class="badge ${t.type==='buy'?'badge-buy':'badge-sell'}" style="font-size:10px">${t.type==='buy'?'收':'出'}</span></td><td class="${t.type==='buy'?'c-blue':'c-green'}">${fN(t.usdt)}</td><td>${fT(t.twd)}</td><td>${fN(t.rate)}</td><td><span class="addr">${short(t.address)}</span></td><td class="muted">${t.note||''}</td></tr>`).join('')}</tbody></table></div></td></tr>`:''}`;}).join('');
+  tb.innerHTML=rows.map(r=>{
+    const net=r.st-r.bt;
+    const exp=cpExp[r.name];
+    return`<tr style="cursor:pointer" onclick="toggleCP('${encodeURIComponent(r.name)}')">
+      <td><strong>${r.name}</strong> <span class="muted" style="font-size:10px">${exp?'▲':'▼'}</span></td>
+      <td class="muted">${r.bc}</td><td class="c-blue">${fN(r.bu)}</td><td class="neg">${fT(r.bt)}</td>
+      <td class="muted">${r.sc}</td><td class="c-green">${fN(r.su)}</td><td class="pos">${fT(r.st)}</td>
+      <td><span class="${net>=0?'pos':'neg'}">${net>=0?'+':''}${fT(net)}</span></td>
+      <td class="muted">${r.last}</td>
+    </tr>
+    ${exp?`<tr class="expand-row"><td colspan="9"><div class="expand-inner">
+      <table class="expand-table"><thead><tr><th>日期</th><th>類型</th><th>USDT</th><th>TWD</th><th>匯率</th><th>地址</th><th>備註</th></tr></thead>
+      <tbody>${r.txs.sort((a,b)=>b.date.localeCompare(a.date)).map(t=>`<tr>
+        <td>${t.date}</td>
+        <td><span class="badge ${t.type==='buy'?'badge-buy':'badge-sell'}" style="font-size:10px">${t.type==='buy'?'收':'出'}</span></td>
+        <td class="${t.type==='buy'?'c-blue':'c-green'}">${fN(t.usdt)}</td>
+        <td>${fT(t.twd)}</td><td>${fN(t.rate)}</td>
+        <td><span class="addr" title="${t.address||''}">${short(t.address)}</span></td>
+        <td class="muted">${t.note||''}</td>
+      </tr>`).join('')}</tbody></table>
+    </div></td></tr>`:''}`;
+  }).join('');
+
+  const bMap={},sMap={};
+  rows.forEach(r=>{bMap[r.name]=r.bu;sMap[r.name]=r.su;});
   mkBar('c-cp-buy',rows.map(r=>r.name),[{label:'收USDT量',data:rows.map(r=>r.bu),backgroundColor:rows.map((_,i)=>PAL[i%PAL.length]),borderRadius:4}]);
   mkBar('c-cp-sell',rows.map(r=>r.name),[{label:'出USDT量',data:rows.map(r=>r.su),backgroundColor:rows.map((_,i)=>PAL[(i+3)%PAL.length]),borderRadius:4}]);
 }
 function toggleCP(n){const k=decodeURIComponent(n);cpExp[k]=!cpExp[k];renderCP();}
 
+// ═══════════════════════════════════════════
+// ADDRESS
+// ═══════════════════════════════════════════
 function renderAddr(){
-  const map={};DB.transactions.forEach(t=>{const k=t.address||'（未填地址）';if(!map[k])map[k]={addr:k,cps:new Set(),cnt:0,usdt:0,buyTWD:0,sellTWD:0,last:''};const m=map[k];m.cnt++;m.usdt+=t.usdt;if(t.date>m.last)m.last=t.date;if(t.counterparty)m.cps.add(t.counterparty);if(t.type==='buy')m.buyTWD+=t.twd;else m.sellTWD+=t.twd;});
+  const txs=DB.transactions;
+  const map={};
+  txs.forEach(t=>{
+    const k=t.address||'（未填地址）';
+    if(!map[k])map[k]={addr:k,cps:new Set(),cnt:0,usdt:0,buyTWD:0,sellTWD:0,last:''};
+    const m=map[k];m.cnt++;m.usdt+=t.usdt;
+    if(t.date>m.last)m.last=t.date;
+    if(t.counterparty)m.cps.add(t.counterparty);
+    if(t.type==='buy')m.buyTWD+=t.twd;else m.sellTWD+=t.twd;
+  });
   const rows=Object.values(map).sort((a,b)=>b.last.localeCompare(a.last));
   const tb=document.getElementById('addr-tbody');
   if(!rows.length){tb.innerHTML=`<tr><td colspan="8"><div class="empty"><div class="empty-icon">🔗</div>尚無資料</div></td></tr>`;return;}
-  tb.innerHTML=rows.map(r=>{const net=r.sellTWD-r.buyTWD;const isFake=r.addr==='（未填地址）';return`<tr><td>${isFake?`<span class="muted">${r.addr}</span>`:`<span class="addr-full">${r.addr}</span><button class="copy-btn" onclick="cpAddr(event,'${r.addr}')">複製</button>`}</td><td>${[...r.cps].join(', ')||'—'}</td><td>${r.cnt}</td><td>${fN(r.usdt)}</td><td class="neg">${fT(r.buyTWD)}</td><td class="pos">${fT(r.sellTWD)}</td><td><span class="${net>=0?'pos':'neg'}">${net>=0?'+':''}${fT(net)}</span></td><td class="muted">${r.last}</td></tr>`;}).join('');
+  tb.innerHTML=rows.map(r=>{
+    const net=r.sellTWD-r.buyTWD;
+    const isFake=r.addr==='（未填地址）';
+    return`<tr>
+      <td>
+        ${isFake?`<span class="muted">${r.addr}</span>`:`<span class="addr-full">${r.addr}</span>`}
+        ${!isFake?`<button class="copy-btn" onclick="cpAddr(event,'${r.addr}')">複製</button>`:''}
+      </td>
+      <td>${[...r.cps].join(', ')||'—'}</td>
+      <td>${r.cnt}</td>
+      <td>${fN(r.usdt)}</td>
+      <td class="neg">${fT(r.buyTWD)}</td>
+      <td class="pos">${fT(r.sellTWD)}</td>
+      <td><span class="${net>=0?'pos':'neg'}">${net>=0?'+':''}${fT(net)}</span></td>
+      <td class="muted">${r.last}</td>
+    </tr>`;
+  }).join('');
 }
 function cpAddr(e,addr){e.stopPropagation();navigator.clipboard.writeText(addr).then(()=>toast('地址已複製','ok'));}
 
+// ═══════════════════════════════════════════
+// PROFIT ANALYSIS
+// ═══════════════════════════════════════════
 function renderProfit(){
-  const fifo=calcFIFO();const rows=DB.transactions.filter(t=>t.type==='sell').sort((a,b)=>a.date.localeCompare(b.date)).map(t=>({...t,...(fifo[t.id]||{profit:0,costBasis:0,avgBuyRate:0})}));
-  const totalP=rows.reduce((s,r)=>s+(r.profit||0),0),totalC=rows.reduce((s,r)=>s+(r.costBasis||0),0);
-  document.getElementById('pa-total').textContent=fT(totalP);document.getElementById('pa-total').className='card-val '+(totalP>=0?'c-gold':'c-red');
-  document.getElementById('pa-count').textContent=rows.length;document.getElementById('pa-avg').textContent=fT(rows.length?totalP/rows.length:0);document.getElementById('pa-rate').textContent=(totalC>0?(totalP/totalC*100):0).toFixed(2)+'%';
-  mkLine('c-profit-trend',rows.map(r=>r.date),rows.map(r=>r.profit||0));
+  const fifo=calcFIFO();
+  const sells=DB.transactions.filter(t=>t.type==='sell').sort((a,b)=>a.date.localeCompare(a.date));
+  const rows=sells.map(t=>({...t,...(fifo[t.id]||{profit:0,costBasis:0,avgBuyRate:0})}));
+  const totalProfit=rows.reduce((s,r)=>s+(r.profit||0),0);
+  const totalCost=rows.reduce((s,r)=>s+(r.costBasis||0),0);
+  const avgP=rows.length?totalProfit/rows.length:0;
+  const avgR=totalCost>0?(totalProfit/totalCost*100):0;
+
+  document.getElementById('pa-total').textContent=fT(totalProfit);
+  document.getElementById('pa-total').className='card-val '+(totalProfit>=0?'c-gold':'c-red');
+  document.getElementById('pa-count').textContent=rows.length;
+  document.getElementById('pa-avg').textContent=fT(avgP);
+  document.getElementById('pa-rate').textContent=avgR.toFixed(2)+'%';
+
+  mkLine('c-profit-trend',
+    rows.map((r,i)=>r.date+(rows.filter((x,j)=>j<i&&x.date===r.date).length?'('+rows.filter((x,j)=>j<i&&x.date===r.date).length+')':'')),
+    rows.map(r=>r.profit||0),'#d29922'
+  );
+
   const tb=document.getElementById('profit-tbody');
   if(!rows.length){tb.innerHTML=`<tr><td colspan="10"><div class="empty"><div class="empty-icon">💰</div>尚無出USDT記錄</div></td></tr>`;return;}
-  tb.innerHTML=[...rows].reverse().map(r=>{const pr=r.profit||0;const rate=r.costBasis>0?((pr/r.costBasis)*100).toFixed(2):'0';return`<tr><td>${r.date}</td><td>${r.counterparty||'—'}</td><td class="c-green" style="font-weight:600">${fN(r.usdt)}</td><td>${fT(r.twd)}</td><td>${r.fee?fT(r.fee):'—'}</td><td class="neg">${fT(r.costBasis||0)}</td><td><strong class="${pr>=0?'pos':'neg'}">${pr>=0?'+':''}${fT(pr)}</strong></td><td><span class="badge ${pr>=0?'badge-profit':'badge-loss'}">${rate}%</span></td><td class="muted">${fN(r.avgBuyRate||0)}</td><td class="muted">${fN(r.rate)}</td></tr>`;}).join('');
+  const sorted=[...rows].sort((a,b)=>b.date.localeCompare(a.date));
+  tb.innerHTML=sorted.map(r=>{
+    const pr=r.profit||0;
+    const rate=r.costBasis>0?((pr/r.costBasis)*100).toFixed(2):'0';
+    return`<tr>
+      <td>${r.date}</td>
+      <td>${r.counterparty||'—'}</td>
+      <td class="c-green" style="font-weight:600">${fN(r.usdt)}</td>
+      <td>${fT(r.twd)}</td>
+      <td>${r.fee?fT(r.fee):'—'}</td>
+      <td class="neg">${fT(r.costBasis||0)}</td>
+      <td><strong class="${pr>=0?'pos':'neg'}">${pr>=0?'+':''}${fT(pr)}</strong></td>
+      <td><span class="badge ${pr>=0?'badge-profit':'badge-loss'}">${rate}%</span></td>
+      <td class="muted">${fN(r.avgBuyRate||0)}</td>
+      <td class="muted">${fN(r.rate)}</td>
+    </tr>`;
+  }).join('');
   document.getElementById('profit-count').textContent=`共 ${rows.length} 筆出USDT`;
-  document.getElementById('profit-total').innerHTML=`已實現盈利 <strong class="${totalP>=0?'pos':'neg'}">${totalP>=0?'+':''}${fT(totalP)} TWD</strong>`;
+  document.getElementById('profit-total').innerHTML=`已實現盈利 <strong class="${totalProfit>=0?'pos':'neg'}">${totalProfit>=0?'+':''}${fT(totalProfit)} TWD</strong>`;
 }
 
+// ═══════════════════════════════════════════
+// MODAL
+// ═══════════════════════════════════════════
 let editId=null,curType='buy';
 function openModal(id=null){
-  editId=id;const tx=id?DB.transactions.find(t=>t.id===id):null;
-  document.getElementById('modal-title').textContent=id?'編輯交易':'新增交易';setType(tx?tx.type:'buy');
-  document.getElementById('f-usdt').value=tx?tx.usdt:'';document.getElementById('f-twd').value=tx?tx.twd:'';document.getElementById('f-rate').value=tx?tx.rate:'';
-  document.getElementById('f-date').value=tx?tx.date:toDay();document.getElementById('f-fee').value=tx?(tx.fee||''):'';
-  document.getElementById('f-cp').value=tx?(tx.counterparty||''):'';document.getElementById('f-addr').value=tx?(tx.address||''):'';document.getElementById('f-note').value=tx?(tx.note||''):'';
-  document.getElementById('cp-list').innerHTML=[...new Set(DB.transactions.map(t=>t.counterparty).filter(Boolean))].map(c=>`<option value="${c}">`).join('');
-  document.getElementById('addr-list').innerHTML=[...new Set(DB.transactions.map(t=>t.address).filter(Boolean))].map(a=>`<option value="${a}">`).join('');
-  document.getElementById('modal-overlay').classList.add('open');setTimeout(()=>document.getElementById('f-usdt').focus(),80);
+  editId=id;
+  const tx=id?DB.transactions.find(t=>t.id===id):null;
+  document.getElementById('modal-title').textContent=id?'編輯交易':'新增交易';
+  setType(tx?tx.type:'buy');
+  document.getElementById('f-usdt').value=tx?tx.usdt:'';
+  document.getElementById('f-twd').value=tx?tx.twd:'';
+  document.getElementById('f-rate').value=tx?tx.rate:'';
+  document.getElementById('f-date').value=tx?tx.date:toDay();
+  document.getElementById('f-fee').value=tx?(tx.fee||''):'';
+  document.getElementById('f-cp').value=tx?(tx.counterparty||''):'';
+  document.getElementById('f-addr').value=tx?(tx.address||''):'';
+  document.getElementById('f-note').value=tx?(tx.note||''):'';
+  const cps=[...new Set(DB.transactions.map(t=>t.counterparty).filter(Boolean))];
+  const addrs=[...new Set(DB.transactions.map(t=>t.address).filter(Boolean))];
+  document.getElementById('cp-list').innerHTML=cps.map(c=>`<option value="${c}">`).join('');
+  document.getElementById('addr-list').innerHTML=addrs.map(a=>`<option value="${a}">`).join('');
+  document.getElementById('modal-overlay').classList.add('open');
+  setTimeout(()=>document.getElementById('f-usdt').focus(),80);
 }
 function closeModal(){document.getElementById('modal-overlay').classList.remove('open');}
 document.getElementById('modal-overlay').addEventListener('click',e=>{if(e.target===document.getElementById('modal-overlay'))closeModal();});
-function setType(t){curType=t;document.getElementById('btn-buy').classList.toggle('on',t==='buy');document.getElementById('btn-sell').classList.toggle('on',t==='sell');}
+function setType(t){
+  curType=t;
+  document.getElementById('btn-buy').classList.toggle('on',t==='buy');
+  document.getElementById('btn-sell').classList.toggle('on',t==='sell');
+}
 function autoCalc(changed){
-  const u=parseFloat(document.getElementById('f-usdt').value)||0,tw=parseFloat(document.getElementById('f-twd').value)||0,r=parseFloat(document.getElementById('f-rate').value)||0;
+  const u=parseFloat(document.getElementById('f-usdt').value)||0;
+  const tw=parseFloat(document.getElementById('f-twd').value)||0;
+  const r=parseFloat(document.getElementById('f-rate').value)||0;
   if(changed==='usdt'||changed==='twd'){if(u>0&&tw>0)document.getElementById('f-rate').value=(tw/u).toFixed(4);}
   else if(changed==='rate'){if(u>0&&r>0)document.getElementById('f-twd').value=Math.round(u*r);else if(tw>0&&r>0)document.getElementById('f-usdt').value=(tw/r).toFixed(2);}
 }
 function saveTx(){
-  const usdt=parseFloat(document.getElementById('f-usdt').value),twd=parseFloat(document.getElementById('f-twd').value),date=document.getElementById('f-date').value;
-  if(!usdt||usdt<=0)return toast('請輸入 USDT 數量','err');if(!twd||twd<=0)return toast('請輸入 TWD 金額','err');if(!date)return toast('請選擇日期','err');
-  const tx={id:editId||Date.now().toString(36)+Math.random().toString(36).slice(2,5),type:curType,usdt,twd,rate:parseFloat((twd/usdt).toFixed(4)),fee:parseFloat(document.getElementById('f-fee').value)||0,date,counterparty:document.getElementById('f-cp').value.trim(),address:document.getElementById('f-addr').value.trim(),note:document.getElementById('f-note').value.trim()};
-  if(editId){const i=DB.transactions.findIndex(t=>t.id===editId);DB.transactions[i]=tx;}else DB.transactions.push(tx);
-  saveDB();closeModal();renderActive();toast(editId?'已更新交易':'已新增交易','ok');
+  const usdt=parseFloat(document.getElementById('f-usdt').value);
+  const twd=parseFloat(document.getElementById('f-twd').value);
+  const date=document.getElementById('f-date').value;
+  if(!usdt||usdt<=0)return toast('請輸入 USDT 數量','err');
+  if(!twd||twd<=0)return toast('請輸入 TWD 金額','err');
+  if(!date)return toast('請選擇日期','err');
+  const tx={
+    id:editId||Date.now().toString(36)+Math.random().toString(36).slice(2,5),
+    type:curType,usdt,twd,
+    rate:parseFloat((twd/usdt).toFixed(4)),
+    fee:parseFloat(document.getElementById('f-fee').value)||0,
+    date,
+    counterparty:document.getElementById('f-cp').value.trim(),
+    address:document.getElementById('f-addr').value.trim(),
+    note:document.getElementById('f-note').value.trim(),
+  };
+  if(editId){const i=DB.transactions.findIndex(t=>t.id===editId);DB.transactions[i]=tx;}
+  else DB.transactions.push(tx);
+  saveDB();closeModal();renderActive();
+  toast(editId?'已更新交易':'已新增交易','ok');
 }
-function delTx(id){if(!confirm('確定刪除此筆交易？'))return;DB.transactions=DB.transactions.filter(t=>t.id!==id);saveDB();renderActive();toast('已刪除','ok');}
-function renderActive(){const p=document.querySelector('.page.active').id.replace('page-','');({dash:renderDash,tx:renderTx,cp:renderCP,addr:renderAddr,profit:renderProfit})[p]?.();}
+function delTx(id){
+  if(!confirm('確定刪除此筆交易？'))return;
+  DB.transactions=DB.transactions.filter(t=>t.id!==id);
+  saveDB();renderActive();toast('已刪除','ok');
+}
+function renderActive(){
+  const p=document.querySelector('.page.active').id.replace('page-','');
+  const fn={dash:renderDash,tx:renderTx,cp:renderCP,addr:renderAddr,profit:renderProfit};
+  if(fn[p])fn[p]();
+}
 
-function exportCSV(){const fifo=calcFIFO();const rows=[['日期','類型','USDT數量','TWD金額','匯率','手續費TWD','對手方','地址','FIFO盈利TWD','備註']];[...DB.transactions].sort((a,b)=>b.date.localeCompare(a.date)).forEach(t=>{const f=fifo[t.id];rows.push([t.date,t.type==='buy'?'收USDT':'出USDT',t.usdt,t.twd,t.rate,t.fee||0,t.counterparty||'',t.address||'',t.type==='sell'&&f?f.profit.toFixed(2):'',t.note||'']);});dl('\ufeff'+rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n'),`USDT_OTC_${toDay()}.csv`,'text/csv;charset=utf-8');toast('CSV 匯出成功','ok');}
+// ═══════════════════════════════════════════
+// DATA IO
+// ═══════════════════════════════════════════
+function exportCSV(){
+  const fifo=calcFIFO();
+  const rows=[['日期','類型','USDT數量','TWD金額','匯率','手續費TWD','對手方','地址','FIFO盈利TWD','備註']];
+  [...DB.transactions].sort((a,b)=>b.date.localeCompare(a.date)).forEach(t=>{
+    const f=fifo[t.id];
+    rows.push([t.date,t.type==='buy'?'收USDT':'出USDT',t.usdt,t.twd,t.rate,t.fee||0,t.counterparty||'',t.address||'',t.type==='sell'&&f?f.profit.toFixed(2):'',t.note||'']);
+  });
+  dl('\ufeff'+rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n'),`USDT_OTC_${toDay()}.csv`,'text/csv;charset=utf-8');
+  toast('CSV 匯出成功','ok');
+}
 function backupJSON(){dl(JSON.stringify(DB,null,2),`USDT_OTC_備份_${toDay()}.json`,'application/json');toast('備份完成','ok');}
-function importJSON(){const inp=document.createElement('input');inp.type='file';inp.accept='.json';inp.onchange=e=>{const fr=new FileReader();fr.onload=ev=>{try{const d=JSON.parse(ev.target.result);if(!d.transactions)throw 0;DB=d;saveDB();renderActive();toast('匯入成功','ok');}catch{toast('檔案格式錯誤','err');}};fr.readAsText(e.target.files[0]);};inp.click();}
-function clearAll(){if(!confirm('確定清除所有資料？此操作無法復原！'))return;DB={transactions:[]};saveDB();renderActive();toast('已清除','ok');}
+function importJSON(){
+  const inp=document.createElement('input');inp.type='file';inp.accept='.json';
+  inp.onchange=e=>{
+    const fr=new FileReader();
+    fr.onload=ev=>{try{const d=JSON.parse(ev.target.result);if(!d.transactions)throw 0;DB=d;saveDB();renderActive();toast('匯入成功','ok');}catch{toast('檔案格式錯誤','err');}};
+    fr.readAsText(e.target.files[0]);
+  };inp.click();
+}
+function clearAll(){
+  if(!confirm('確定清除所有資料？此操作無法復原！'))return;
+  DB={transactions:[]};saveDB();renderActive();toast('已清除','ok');
+}
 function dl(content,name,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([content],{type}));a.download=name;a.click();}
-function toast(msg,type='ok'){const el=document.createElement('div');el.className=`toast ${type}`;el.innerHTML=`${type==='ok'?'✅':'❌'} ${msg}`;document.body.appendChild(el);setTimeout(()=>el.remove(),2600);}
 
-document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();if(e.key==='n'&&!e.target.matches('input,select,textarea')&&!document.getElementById('modal-overlay').classList.contains('open'))openModal();});
+// ═══════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════
+function toast(msg,type='ok'){
+  const el=document.createElement('div');el.className=`toast ${type}`;
+  el.innerHTML=`${type==='ok'?'✅':'❌'} ${msg}`;
+  document.body.appendChild(el);setTimeout(()=>el.remove(),2600);
+}
+
+// ═══════════════════════════════════════════
+// KEYBOARD
+// ═══════════════════════════════════════════
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape')closeModal();
+  if(e.key==='n'&&!e.target.matches('input,select,textarea')&&!document.getElementById('modal-overlay').classList.contains('open'))openModal();
+});
+
+// INIT
 renderDash();
 </script>
 </body>
