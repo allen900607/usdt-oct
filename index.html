@@ -110,7 +110,7 @@ select.inp{cursor:pointer}
 ::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
 .mob-nav{display:none}
 
-/* 新增：登入畫面的樣式 */
+/* 登入畫面的樣式 */
 #login-screen {
   position: fixed; inset: 0; background: var(--bg); z-index: 9999;
   display: flex; align-items: center; justify-content: center;
@@ -189,8 +189,8 @@ select.inp{cursor:pointer}
   </div>
   <div class="cards">
     <div class="card"><div class="card-label">💼 USDT 庫存</div><div class="card-val c-blue" id="d-inv">0.00</div><div class="card-sub">持有 USDT</div></div>
-    <div class="card"><div class="card-label">📤 買入成本</div><div class="card-val c-red" id="d-cost">0</div><div class="card-sub">付出 TWD</div></div>
-    <div class="card"><div class="card-label">📥 賣出回收</div><div class="card-val c-green" id="d-rev">0</div><div class="card-sub">收回 TWD</div></div>
+    <div class="card"><div class="card-label">📤 買入總成本</div><div class="card-val c-red" id="d-cost">0</div><div class="card-sub">含手續費 TWD</div></div>
+    <div class="card"><div class="card-label">📥 賣出總回收</div><div class="card-val c-green" id="d-rev">0</div><div class="card-sub">扣手續費 TWD</div></div>
     <div class="card"><div class="card-label">🏆 淨盈利</div><div class="card-val" id="d-profit">0</div><div class="card-sub" id="d-prate">利潤率 0%</div></div>
     <div class="card"><div class="card-label">📈 每USDT均利</div><div class="card-val c-purple" id="d-spread">0.00</div><div class="card-sub">TWD / USDT</div></div>
   </div>
@@ -246,7 +246,7 @@ select.inp{cursor:pointer}
 </div>
 
 <div class="page" id="page-cp">
-  <div class="ph"><div><div class="pt">對手方分析</div><div class="ps">統計跟誰收USDT、出給誰、各方往來金額</div></div></div>
+  <div class="ph"><div><div class="pt">對手方分析</div><div class="ps">統計跟誰收USDT、出給誰、各方往來真實金額(含手續費)</div></div></div>
   <div class="chart-row" style="grid-template-columns:1fr 1fr">
     <div class="chart-card">
       <div class="chart-title">各對手方 — 收USDT量</div>
@@ -261,8 +261,8 @@ select.inp{cursor:pointer}
     <div class="thead2"><span class="ttitle">對手方總覽</span><span style="font-size:11px;color:var(--text-muted)">點擊行展開明細</span></div>
     <table><thead><tr>
       <th>對手方</th>
-      <th>收USDT次</th><th>收USDT量</th><th>付出TWD</th>
-      <th>出USDT次</th><th>出USDT量</th><th>收回TWD</th>
+      <th>收USDT次</th><th>收USDT量</th><th>真實總成本</th>
+      <th>出USDT次</th><th>出USDT量</th><th>真實總收回</th>
       <th>淨盈虧TWD</th><th>最後交易</th>
     </tr></thead><tbody id="cp-tbody"></tbody></table>
   </div>
@@ -273,13 +273,13 @@ select.inp{cursor:pointer}
   <div class="tcard">
     <table><thead><tr>
       <th>地址 / 帳號</th><th>關聯對手方</th><th>交易次數</th><th>USDT量</th>
-      <th>全成本(買入TWD)</th><th>回收(賣出TWD)</th><th>淨盈虧</th><th>最後交易</th>
+      <th>真實總成本(含費)</th><th>真實總收回(扣費)</th><th>淨盈虧</th><th>最後交易</th>
     </tr></thead><tbody id="addr-tbody"></tbody></table>
   </div>
 </div>
 
 <div class="page" id="page-profit">
-  <div class="ph"><div><div class="pt">盈利分析</div><div class="ps">FIFO 成本法 — 逐筆計算每次出USDT的真實盈利</div></div></div>
+  <div class="ph"><div><div class="pt">盈利分析</div><div class="ps">FIFO 成本法 — 逐筆計算每次出USDT的真實盈利(已扣除雙邊手續費)</div></div></div>
   <div class="pa-summary">
     <div class="card"><div class="card-label">🏆 已實現盈利</div><div class="card-val c-gold" id="pa-total">0</div><div class="card-sub">TWD</div></div>
     <div class="card"><div class="card-label">📋 出USDT筆數</div><div class="card-val c-blue" id="pa-count">0</div><div class="card-sub">筆</div></div>
@@ -292,7 +292,7 @@ select.inp{cursor:pointer}
   </div>
   <div class="tcard">
     <table><thead><tr>
-      <th>日期</th><th>對手方</th><th>出USDT量</th><th>收回TWD</th><th>手續費</th><th>FIFO成本</th><th>已實現盈利</th><th>利潤率</th><th>均買匯率</th><th>賣出匯率</th>
+      <th>日期</th><th>對手方</th><th>出USDT量</th><th>真實收回TWD</th><th>手續費</th><th>FIFO總成本</th><th>已實現盈利</th><th>利潤率</th><th>均買匯率</th><th>賣出匯率</th>
     </tr></thead><tbody id="profit-tbody"></tbody></table>
     <div class="tfoot"><span id="profit-count"></span><span id="profit-total"></span></div>
   </div>
@@ -317,8 +317,8 @@ select.inp{cursor:pointer}
     <div class="scard-title">ℹ️ 系統說明</div>
     <div class="srow"><div><div class="slabel">收USDT</div><div class="sdesc">你付出 TWD，從對手方收入 USDT（買入）</div></div></div>
     <div class="srow"><div><div class="slabel">出USDT</div><div class="sdesc">你付出 USDT，向對手方收回 TWD（賣出）</div></div></div>
-    <div class="srow"><div><div class="slabel">盈利計算</div><div class="sdesc">FIFO 先進先出：出USDT時，以最早買入批次的成本計算已實現盈利</div></div></div>
-    <div class="srow"><div><div class="slabel">匯率</div><div class="sdesc">TWD ÷ USDT，輸入兩個金額自動計算</div></div></div>
+    <div class="srow"><div><div class="slabel">盈利計算</div><div class="sdesc">FIFO 先進先出：出USDT時，以最早買入批次的真實成本(含手續費)計算已實現盈利</div></div></div>
+    <div class="srow"><div><div class="slabel">手續費邏輯</div><div class="sdesc">買入時增加總成本，賣出時減少總回收，全面反映真實淨利</div></div></div>
   </div>
 </div>
 
@@ -392,10 +392,9 @@ const firebaseConfig = {
   projectId: "test7788-43edc",
   storageBucket: "test7788-43edc.firebasestorage.app",
   messagingSenderId: "453505538567",
-  appId: "1:453505538567:web:f874c39fe349ea8fde68a2"
+  appId: "1:453505538567:web:f874c39fe349ea8fde68a2",
 };
 
-// 初始化 Firebase
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
@@ -403,7 +402,6 @@ const db = firebase.firestore();
 let DB = { transactions: [] };
 let currentUser = null;
 
-// 監聽登入狀態
 auth.onAuthStateChanged(user => {
   if (user) {
     currentUser = user;
@@ -415,7 +413,6 @@ auth.onAuthStateChanged(user => {
   }
 });
 
-// 登入事件
 function handleLogin() {
   const e = document.getElementById('login-email').value;
   const p = document.getElementById('login-pw').value;
@@ -425,17 +422,15 @@ function handleLogin() {
   });
 }
 
-// 登出事件
 function handleLogout() {
   auth.signOut().then(() => {
-    DB = { transactions: [] }; // 清空本地記憶體
+    DB = { transactions: [] };
     document.getElementById('login-email').value = '';
     document.getElementById('login-pw').value = '';
     toast('已登出系統', 'ok');
   });
 }
 
-// 從 Firestore 讀取資料
 function loadDBFromCloud() {
   if (!currentUser) return;
   db.collection('users').doc(currentUser.uid).get().then(doc => {
@@ -443,9 +438,9 @@ function loadDBFromCloud() {
       DB = doc.data();
     } else {
       DB = { transactions: [] };
-      saveDB(); // 初始化空資料庫
+      saveDB();
     }
-    renderActive(); // 取得資料後開始渲染畫面
+    renderActive();
     toast('資料同步成功', 'ok');
   }).catch(err => {
     console.error(err);
@@ -453,7 +448,6 @@ function loadDBFromCloud() {
   });
 }
 
-// 儲存資料到 Firestore (取代原有的 localStorage.setItem)
 function saveDB() {
   if (currentUser) {
     db.collection('users').doc(currentUser.uid).set(DB)
@@ -462,7 +456,7 @@ function saveDB() {
 }
 
 // ═══════════════════════════════════════════
-// FIFO COST BASIS
+// FIFO COST BASIS (包含手續費修正)
 // ═══════════════════════════════════════════
 function calcFIFO(){
   const sorted=[...DB.transactions].sort((a,b)=>a.date.localeCompare(b.date)||a.id.localeCompare(b.id));
@@ -470,19 +464,22 @@ function calcFIFO(){
   const res={};
   for(const tx of sorted){
     if(tx.type==='buy'){
-      queue.push({remaining:tx.usdt,rate:tx.rate});
+      // 買入的真實成本需加上手續費，算出真正的匯率
+      const trueRate = (tx.twd + (tx.fee || 0)) / tx.usdt;
+      queue.push({remaining:tx.usdt, rate:trueRate});
     } else {
-      let rem=tx.usdt,cost=0;
-      while(rem>0.0001&&queue.length){
+      let rem=tx.usdt, cost=0;
+      while(rem>0.0001 && queue.length){
         const lot=queue[0];
-        const use=Math.min(rem,lot.remaining);
+        const use=Math.min(rem, lot.remaining);
         cost+=use*lot.rate;
-        lot.remaining-=use;rem-=use;
-        if(lot.remaining<0.0001)queue.shift();
+        lot.remaining-=use; rem-=use;
+        if(lot.remaining<0.0001) queue.shift();
       }
-      const revenue=tx.twd-(tx.fee||0);
-      const profit=revenue-cost;
-      res[tx.id]={profit,costBasis:cost,avgBuyRate:tx.usdt>0?cost/tx.usdt:0};
+      // 賣出的真實回收需扣除手續費
+      const revenue = tx.twd - (tx.fee || 0);
+      const profit = revenue - cost;
+      res[tx.id]={profit, costBasis:cost, avgBuyRate:tx.usdt>0 ? cost/tx.usdt : 0};
     }
   }
   return res;
@@ -550,19 +547,24 @@ function nav(p){
 document.querySelectorAll('.nav-item,.mob-nav-item[data-p]').forEach(n=>n.addEventListener('click',()=>nav(n.dataset.p)));
 
 // ═══════════════════════════════════════════
-// DASHBOARD
+// DASHBOARD (包含手續費修正)
 // ═══════════════════════════════════════════
 function renderDash(){
-  if(!DB || !DB.transactions) return; // 確保有資料再渲染
+  if(!DB || !DB.transactions) return;
   const txs=DB.transactions;
   const buys=txs.filter(t=>t.type==='buy');
   const sells=txs.filter(t=>t.type==='sell');
+  
   const buyUSDT=buys.reduce((s,t)=>s+t.usdt,0);
   const sellUSDT=sells.reduce((s,t)=>s+t.usdt,0);
-  const buyTWD=buys.reduce((s,t)=>s+t.twd,0);
-  const sellTWD=sells.reduce((s,t)=>s+t.twd,0);
+  
+  // 修正：買入總成本 = TWD + 手續費
+  const buyTWD=buys.reduce((s,t)=>s+t.twd+(t.fee||0),0);
+  // 修正：賣出總回收 = TWD - 手續費
+  const sellTWD=sells.reduce((s,t)=>s+t.twd-(t.fee||0),0);
+  
   const inv=buyUSDT-sellUSDT;
-  const profit=sellTWD-buyTWD;
+  const profit=sellTWD-buyTWD; // 淨利潤已完全反映手續費
   const avgBuy=buyUSDT>0?buyTWD/buyUSDT:0;
   const avgSell=sellUSDT>0?sellTWD/sellUSDT:0;
 
@@ -579,14 +581,15 @@ function renderDash(){
     const d=new Date(now.getFullYear(),now.getMonth()-i,1);
     const m=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
     months.push(m);
-    const mb=buys.filter(t=>t.date.startsWith(m)).reduce((s,t)=>s+t.twd,0);
-    const ms=sells.filter(t=>t.date.startsWith(m)).reduce((s,t)=>s+t.twd,0);
+    // 圖表也同步修正手續費邏輯
+    const mb=buys.filter(t=>t.date.startsWith(m)).reduce((s,t)=>s+t.twd+(t.fee||0),0);
+    const ms=sells.filter(t=>t.date.startsWith(m)).reduce((s,t)=>s+t.twd-(t.fee||0),0);
     bVals.push(mb);sVals.push(ms);pVals.push(ms-mb);
   }
   mkBar('c-trend',months,[
     {label:'買入成本TWD',data:bVals,backgroundColor:'rgba(248,81,73,.55)',borderRadius:3},
     {label:'賣出回收TWD',data:sVals,backgroundColor:'rgba(63,185,80,.55)',borderRadius:3},
-    {label:'盈利TWD',data:pVals,backgroundColor:'rgba(210,153,34,.85)',borderRadius:3,type:'line',borderColor:'#d29922',fill:false,tension:0.4,pointRadius:3},
+    {label:'淨盈利TWD',data:pVals,backgroundColor:'rgba(210,153,34,.85)',borderRadius:3,type:'line',borderColor:'#d29922',fill:false,tension:0.4,pointRadius:3},
   ]);
 
   const bMap={},sMap={};
@@ -618,7 +621,7 @@ function renderDash(){
 }
 
 // ═══════════════════════════════════════════
-// TRANSACTIONS
+// TRANSACTIONS (包含手續費修正)
 // ═══════════════════════════════════════════
 function renderTx(){
   const q=(document.getElementById('tx-search').value||'').toLowerCase();
@@ -658,13 +661,14 @@ function renderTx(){
   }).join('');
   const buys=txs.filter(t=>t.type==='buy'),sells=txs.filter(t=>t.type==='sell');
   document.getElementById('tx-count').textContent=`共 ${txs.length} 筆`;
+  // 底部總結同樣修正手續費
   document.getElementById('tx-summary').innerHTML=
-    `收USDT <span class="c-blue">${fN(buys.reduce((s,t)=>s+t.usdt,0))}</span> 付<span class="neg"> -${fT(buys.reduce((s,t)=>s+t.twd,0))} TWD</span>　　`+
-    `出USDT <span class="c-green">${fN(sells.reduce((s,t)=>s+t.usdt,0))}</span> 收<span class="pos"> +${fT(sells.reduce((s,t)=>s+t.twd,0))} TWD</span>`;
+    `收USDT <span class="c-blue">${fN(buys.reduce((s,t)=>s+t.usdt,0))}</span> 付<span class="neg"> -${fT(buys.reduce((s,t)=>s+t.twd+(t.fee||0),0))} TWD</span>　　`+
+    `出USDT <span class="c-green">${fN(sells.reduce((s,t)=>s+t.usdt,0))}</span> 收<span class="pos"> +${fT(sells.reduce((s,t)=>s+t.twd-(t.fee||0),0))} TWD</span>`;
 }
 
 // ═══════════════════════════════════════════
-// COUNTERPARTY
+// COUNTERPARTY (包含手續費修正)
 // ═══════════════════════════════════════════
 let cpExp={};
 function renderCP(){
@@ -675,8 +679,9 @@ function renderCP(){
     if(!map[k])map[k]={name:k,bc:0,bu:0,bt:0,sc:0,su:0,st:0,last:'',txs:[]};
     const m=map[k];m.txs.push(t);
     if(t.date>m.last)m.last=t.date;
-    if(t.type==='buy'){m.bc++;m.bu+=t.usdt;m.bt+=t.twd;}
-    else{m.sc++;m.su+=t.usdt;m.st+=t.twd;}
+    // 修正手續費
+    if(t.type==='buy'){m.bc++;m.bu+=t.usdt;m.bt+=t.twd+(t.fee||0);}
+    else{m.sc++;m.su+=t.usdt;m.st+=t.twd-(t.fee||0);}
   });
   const rows=Object.values(map).sort((a,b)=>b.last.localeCompare(a.last));
   const tb=document.getElementById('cp-tbody');
@@ -712,7 +717,7 @@ function renderCP(){
 function toggleCP(n){const k=decodeURIComponent(n);cpExp[k]=!cpExp[k];renderCP();}
 
 // ═══════════════════════════════════════════
-// ADDRESS
+// ADDRESS (包含手續費修正)
 // ═══════════════════════════════════════════
 function renderAddr(){
   const txs=DB.transactions;
@@ -723,7 +728,9 @@ function renderAddr(){
     const m=map[k];m.cnt++;m.usdt+=t.usdt;
     if(t.date>m.last)m.last=t.date;
     if(t.counterparty)m.cps.add(t.counterparty);
-    if(t.type==='buy')m.buyTWD+=t.twd;else m.sellTWD+=t.twd;
+    // 修正手續費
+    if(t.type==='buy')m.buyTWD+=t.twd+(t.fee||0);
+    else m.sellTWD+=t.twd-(t.fee||0);
   });
   const rows=Object.values(map).sort((a,b)=>b.last.localeCompare(a.last));
   const tb=document.getElementById('addr-tbody');
@@ -777,11 +784,13 @@ function renderProfit(){
   tb.innerHTML=sorted.map(r=>{
     const pr=r.profit||0;
     const rate=r.costBasis>0?((pr/r.costBasis)*100).toFixed(2):'0';
+    // 這裡的收回TWD欄位改為顯示真實收回金額 (TWD - 手續費)
+    const trueRevenue = r.twd - (r.fee || 0);
     return`<tr>
       <td>${r.date}</td>
       <td>${r.counterparty||'—'}</td>
       <td class="c-green" style="font-weight:600">${fN(r.usdt)}</td>
-      <td>${fT(r.twd)}</td>
+      <td>${fT(trueRevenue)}</td>
       <td>${r.fee?fT(r.fee):'—'}</td>
       <td class="neg">${fT(r.costBasis||0)}</td>
       <td><strong class="${pr>=0?'pos':'neg'}">${pr>=0?'+':''}${fT(pr)}</strong></td>
